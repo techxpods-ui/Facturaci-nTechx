@@ -650,12 +650,15 @@ let _ventas = [];
 // ── API ──────────────────────────────────────────────────────────
 async function api(action, data = {}) {
   try {
-    const r = await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: 'POST',
       body: JSON.stringify({ key: API_KEY, action, ...data })
+      // Sin Content-Type header — esto es crítico para evitar el preflight CORS
     });
-    return await r.json();
-  } catch (e) {
+    const text = await res.text();
+    return JSON.parse(text);
+  } catch(e) {
+    console.error('API error:', e);
     return { success: false, error: 'Sin conexión. Intenta de nuevo.' };
   }
 }
