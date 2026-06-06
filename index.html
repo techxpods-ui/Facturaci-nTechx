@@ -418,7 +418,9 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           </div>
           <div class="tot-bar-v" id="nv-tot">$0</div>
         </div>
-        <button class="btn btn-p" style="margin-top:12px" onclick="submitVenta()">Guardar venta</button>
+        <div style="position:sticky;bottom:0;background:var(--bg);padding:12px 0 6px;z-index:10">
+          <button class="btn btn-p" onclick="submitVenta()">Guardar venta</button>
+        </div>
       </div>
     </section>
 
@@ -665,10 +667,10 @@ async function api(action, data = {}) {
 
 // ── UTILS ────────────────────────────────────────────────────────
 const fCOP = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
-const fDate = d => { if(!d)return''; const dt = (typeof d==='string')?new Date(d+'T12:00:00'):d; return dt.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}); };
+const fDate = d => { if(!d&&d!==0)return''; let dt; if(typeof d==='string'){const s=d.trim();if(!s)return'';const iso=s.replace(' ','T');dt=new Date(iso.length===10?iso+'T12:00:00':iso);}else{dt=new Date(d);}if(!dt||isNaN(dt.getTime()))return String(d);return dt.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}); };
 const today = () => new Date().toISOString().split('T')[0];
 const $ = id => document.getElementById(id);
-const getToggle = id => { const el=$('#'+id)?.querySelector('.to.on'); return el?el.dataset.v:''; };
+const getToggle = id => { const el=$(id)?.querySelector('.to.on'); return el?el.dataset.v:''; };
 
 function toast(msg, err=false, dur=2800) {
   const t = $('toast');
@@ -1009,7 +1011,7 @@ function showVD(id) {
     <div class="dr" style="margin-top:4px"><span class="dr-k" style="font-size:14px;color:var(--ws)">TOTAL</span><span class="dr-v" style="font-family:var(--ft);font-weight:900;font-size:20px">${fCOP(v.Total_Factura)}</span></div>
     ${(v.productos||[]).length?`
       <div class="sh" style="margin-top:14px"><span class="sh-t">Productos</span></div>
-      ${v.productos.map(p=>`<div class="dr"><span class="dr-k">${p.SKU} × ${p.Cantidad}</span><span class="dr-v">${fCOP(p.Precio_Unitario)} c/u = ${fCOP(p.Subtotal)}</span></div>`).join('')}
+      ${v.productos.map(p=>{const pu=parseFloat(p.Precio_Unitario)||0;const cant=parseFloat(p.Cantidad)||1;return`<div class="dr"><span class="dr-k">${p.SKU} × ${cant}</span><span class="dr-v">${fCOP(pu)} c/u = ${fCOP(pu*cant)}</span></div>`;}).join('')}
     `:''}`;
 
   const acts=$('vd-actions');
@@ -1039,8 +1041,15 @@ async function marcarPagado(id) {
   showLoad(true);
   const r=await api('updateVenta',{id_factura:id,updates:{Estado_Pago:'Pagado'}});
   showLoad(false);
-  if(r.success){ toast('Marcado como pagado ✓'); closeModal('modal-vd'); loadVentas(); }
-  else toast(r.error||'Error',true);
+  if(r.success){
+    const v=_ventas.find(x=>x.ID_Factura===id);
+    if(v) v.Estado_Pago='Pagado';
+    toast('Marcado como pagado ✓');
+    closeModal('modal-vd');
+    loadVentas();
+  } else {
+    toast(r.error||'Error al actualizar pago',true);
+  }
 }
 
 function printFromDetail(id) {
