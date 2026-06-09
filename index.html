@@ -262,6 +262,20 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   #fab{right:calc(50% - 280px);position:fixed}
   #bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px}
 }
+/* ── FACTURA SEARCH DROPDOWN ───────────────────────────────────── */
+.fac-wrap{position:relative}
+.fac-drop{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card);border:1px solid var(--bd);border-radius:10px;z-index:200;max-height:240px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.fac-item{padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--bd)}
+.fac-item:last-child{border-bottom:none}
+.fac-item:active{background:var(--bd)}
+.fac-id{font-family:var(--ft);font-size:11px;color:var(--gm);width:62px;flex-shrink:0}
+.fac-cli{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fac-date{font-size:10px;color:var(--gm);flex-shrink:0}
+.fac-tot{font-family:var(--ft);font-weight:700;font-size:13px;color:#4CAF7A;flex-shrink:0;margin-left:4px}
+.fac-none{padding:12px;text-align:center;font-size:12px;color:var(--gm)}
+.fac-sel{background:var(--bd);border-radius:8px;padding:8px 10px;margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.fac-sel-txt{flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fac-sel-x{color:#E87070;font-size:18px;cursor:pointer;flex-shrink:0;line-height:1}
 </style>
 </head>
 <body>
@@ -508,7 +522,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
             <option value="Nomina">Nómina</option>
             <option value="Varios">Varios</option>
           </select>
-          <button class="btn btn-p btn-sm" onclick="$('g-fecha').value=today();openModal('modal-gasto')" style="flex-shrink:0">+ Gasto</button>
+          <button class="btn btn-p btn-sm" onclick="openGastoModal()" style="flex-shrink:0">+ Gasto</button>
         </div>
         <div id="g-total"></div>
         <div class="card" id="g-list"><div class="ld"><div class="sp"></div></div></div>
@@ -521,7 +535,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
             <span style="font-size:12px;color:var(--gm)">Saldo actual</span>
             <span id="b-saldo-val" style="font-size:18px;font-weight:700;color:#4CAF7A">–</span>
           </div>
-          <button class="btn btn-p btn-sm" onclick="$('ban-fecha').value=today();openModal('modal-banco')" style="flex-shrink:0">+ Movimiento</button>
+          <button class="btn btn-p btn-sm" onclick="openBancoModal()" style="flex-shrink:0">+ Movimiento</button>
         </div>
         <div class="card" id="b-list"><div class="ld"><div class="sp"></div></div></div>
       </div>
@@ -591,6 +605,13 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <div class="fg"><label class="fl">Descripción</label><input id="g-desc" class="fi" placeholder="¿En qué se gastó?"></div>
     <div class="fg"><label class="fl">Valor</label><input id="g-val" class="fi" type="number" placeholder="0"></div>
     <div class="fg"><label class="fl">Nota / comprobante</label><input id="g-nota" class="fi" placeholder="Número de factura, observación..."></div>
+    <div class="fg">
+      <label class="fl">¿Registrar también en banco?</label>
+      <div class="tg" id="tg-gasto-banco">
+        <button class="to on" data-v="si" onclick="tog('tg-gasto-banco',this)">Sí, fue un movimiento</button>
+        <button class="to" data-v="no" onclick="tog('tg-gasto-banco',this)">No (solo P&L)</button>
+      </div>
+    </div>
     <button class="btn btn-p" onclick="submitGasto()">Guardar gasto</button>
     <button class="btn btn-g" onclick="closeModal('modal-gasto')">Cancelar</button>
   </div>
@@ -612,9 +633,20 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     </div>
     <div class="fg"><label class="fl">Valor</label><input id="ban-val" class="fi" type="number" placeholder="0"></div>
     <div class="fg"><label class="fl">Descripción</label><input id="ban-desc" class="fi" placeholder="¿De qué es este movimiento?"></div>
-    <div class="fg"><label class="fl">Referencia a factura (opcional)</label><input id="ban-ref" class="fi" placeholder="FAC-001"></div>
+    <div class="fg">
+      <label class="fl">Vincular a factura pendiente (opcional)</label>
+      <div class="fac-wrap">
+        <input id="ban-fac-q" class="fi" placeholder="Buscar cliente o FAC-..." oninput="searchFacs()" autocomplete="off">
+        <div id="ban-fac-drop" class="fac-drop h"></div>
+      </div>
+      <div id="ban-fac-sel" class="fac-sel h">
+        <span class="fac-sel-txt" id="ban-fac-sel-txt"></span>
+        <span class="fac-sel-x" onclick="clearFac()">×</span>
+      </div>
+      <input type="hidden" id="ban-ref">
+    </div>
     <button class="btn btn-p" onclick="submitBanco()">Guardar movimiento</button>
-    <button class="btn btn-g" onclick="closeModal('modal-banco')">Cancelar</button>
+    <button class="btn btn-g" onclick="closeModal('modal-banco');clearFac()">Cancelar</button>
   </div>
 </div>
 
@@ -1145,7 +1177,12 @@ function printDomPage() {
 }
 
 // ── GASTOS & BANCO ───────────────────────────────────────────────
-function loadGB() { loadGastos(); loadBanco(); }
+function loadGB() {
+  loadGastos();
+  loadBanco();
+  // Refrescar ventas en background para el buscador de facturas pendientes
+  api('getVentas',{}).then(r=>{ if(r.success) _ventas=r.data; });
+}
 
 function switchTab(t) {
   ['g','b'].forEach(x=>{ $('tab-'+x).classList.toggle('on', x===t); });
@@ -1218,20 +1255,96 @@ async function loadBanco() {
     : '<div class="ld">No hay movimientos registrados</div>';
 }
 
+function openGastoModal() {
+  $('g-fecha').value = today();
+  resetTg('tg-gasto-banco','si');
+  openModal('modal-gasto');
+}
+
 async function submitGasto() {
   const val=parseFloat($('g-val').value);
   if(!val||val<=0) return toast('Ingresa un valor válido',true);
+  const fecha=$('g-fecha').value||today();
+  const cat=$('g-cat-in').value;
+  const desc=$('g-desc').value.trim();
   showLoad(true);
   const r=await api('saveGasto',{
-    fecha:$('g-fecha').value||today(),
-    categoria:$('g-cat-in').value,
-    descripcion:$('g-desc').value.trim(),
-    valor:val,
+    fecha, categoria:cat, descripcion:desc, valor:val,
     comprobante_nota:$('g-nota').value.trim()
   });
+  if(!r.success){ showLoad(false); toast(r.error||'Error',true); return; }
+  // Si el toggle dice "sí", crear también movimiento bancario Salida
+  if(getToggle('tg-gasto-banco')==='si'){
+    const descBanco = cat + (desc ? ': '+desc : '');
+    await api('saveBanco',{
+      fecha, tipo:'Salida', valor:val,
+      descripcion:descBanco,
+      id_factura_referencia:''
+    });
+    loadBanco();
+  }
   showLoad(false);
-  if(r.success){ toast('Gasto guardado ✓'); closeModal('modal-gasto'); $('g-val').value=''; $('g-desc').value=''; loadGastos(); }
-  else toast(r.error||'Error',true);
+  toast('Gasto guardado ✓');
+  closeModal('modal-gasto');
+  $('g-val').value=''; $('g-desc').value=''; $('g-nota').value='';
+  loadGastos();
+}
+
+function openBancoModal() {
+  $('ban-fecha').value = today();
+  $('ban-val').value = '';
+  $('ban-desc').value = '';
+  clearFac();
+  resetTg('tg-ban','Entrada');
+  openModal('modal-banco');
+  // Pequeño delay para que el teclado no tape el campo
+  setTimeout(()=>$('ban-val').focus(), 300);
+}
+
+function searchFacs() {
+  const q = ($('ban-fac-q').value||'').trim().toLowerCase();
+  const drop = $('ban-fac-drop');
+  if(!q){ drop.classList.add('h'); return; }
+  const lista = _ventas.filter(v=>
+    v.Estado_Pago !== 'Pagado' &&
+    ((v.Cliente||'').toLowerCase().includes(q) || (v.ID_Factura||'').toLowerCase().includes(q))
+  );
+  drop.innerHTML = lista.length
+    ? lista.slice(0,8).map(v=>`
+        <div class="fac-item"
+          data-id="${v.ID_Factura}"
+          data-cli="${(v.Cliente||'').replace(/"/g,'&quot;')}"
+          data-tot="${parseFloat(v.Total_Factura)||0}"
+          data-fecha="${v.Fecha||''}"
+          onclick="selectFacEl(this)">
+          <span class="fac-id">${v.ID_Factura}</span>
+          <span class="fac-cli">${v.Cliente||'—'}</span>
+          <span class="fac-date">${fDate(v.Fecha)}</span>
+          <span class="fac-tot">${fCOP(v.Total_Factura)}</span>
+        </div>`).join('')
+    : '<div class="fac-none">No hay facturas pendientes que coincidan</div>';
+  drop.classList.remove('h');
+}
+
+function selectFacEl(el) {
+  const id = el.dataset.id;
+  const cli = el.dataset.cli;
+  const tot = parseFloat(el.dataset.tot)||0;
+  $('ban-ref').value = id;
+  $('ban-fac-q').value = '';
+  $('ban-fac-drop').classList.add('h');
+  $('ban-fac-sel-txt').textContent = `📎 ${id} — ${cli}  ·  ${fCOP(tot)}`;
+  $('ban-fac-sel').classList.remove('h');
+  // Auto-completar valor si está vacío
+  if(!$('ban-val').value || $('ban-val').value === '0') $('ban-val').value = tot;
+}
+
+function clearFac() {
+  $('ban-ref').value = '';
+  $('ban-fac-q').value = '';
+  $('ban-fac-drop').classList.add('h');
+  $('ban-fac-sel').classList.add('h');
+  $('ban-fac-sel-txt').textContent = '';
 }
 
 async function submitBanco() {
@@ -1246,7 +1359,16 @@ async function submitBanco() {
     id_factura_referencia:$('ban-ref').value.trim()
   });
   showLoad(false);
-  if(r.success){ toast('Movimiento guardado ✓'); closeModal('modal-banco'); $('ban-val').value=''; $('ban-desc').value=''; $('ban-ref').value=''; loadBanco(); }
+  if(r.success){
+    toast('Movimiento guardado ✓');
+    closeModal('modal-banco');
+    clearFac();
+    $('ban-val').value='';
+    $('ban-desc').value='';
+    loadBanco();
+    // Refrescar ventas para actualizar estados de pago
+    api('getVentas',{}).then(r=>{ if(r.success) _ventas=r.data; });
+  }
   else toast(r.error||'Error',true);
 }
 
