@@ -353,11 +353,17 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
       </div>
 
       <div id="nv-form">
-        <div class="fg">
-          <label class="fl">Tipo de envío</label>
-          <div class="tg" id="tg-envio">
-            <button class="to on" data-v="Medellín" onclick="tog('tg-envio',this)">Medellín</button>
-            <button class="to" data-v="Nacional" onclick="tog('tg-envio',this)">Nacional</button>
+        <div class="frow">
+          <div class="fg">
+            <label class="fl">Fecha de venta</label>
+            <input type="date" id="nv-fecha" class="fi">
+          </div>
+          <div class="fg">
+            <label class="fl">Tipo de envío</label>
+            <div class="tg" id="tg-envio">
+              <button class="to on" data-v="Medellín" onclick="tog('tg-envio',this)">Medellín</button>
+              <button class="to" data-v="Nacional" onclick="tog('tg-envio',this)">Nacional</button>
+            </div>
           </div>
         </div>
         <div class="frow">
@@ -408,6 +414,10 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
             <button class="to on" data-v="Contraentrega" onclick="tog('tg-pago',this)">Contraentrega</button>
             <button class="to" data-v="Pagado" onclick="tog('tg-pago',this)">Ya pagado</button>
           </div>
+        </div>
+        <div class="fg h" id="nv-ref-row">
+          <label class="fl">Ref. / Comprobante de pago</label>
+          <input id="nv-ref" class="fi" placeholder="Nequi, Daviplata, transferencia...">
         </div>
         <div class="fg"><label class="fl">Observaciones</label><textarea id="nv-obs" class="fi" placeholder="Instrucciones de entrega, referencias, etc."></textarea></div>
 
@@ -818,12 +828,14 @@ function initNV() {
   $('nv-form').style.display = 'block';
   lines = [{ id:++lid, sku:'', cant:1, precio:0 }];
   // Reset form
-  ['nv-cli','nv-tel','nv-ciu','nv-dir','nv-ced','nv-men','nv-obs'].forEach(id=>{ const el=$(id); if(el)el.value=''; });
+  ['nv-cli','nv-tel','nv-ciu','nv-dir','nv-ced','nv-men','nv-obs','nv-ref'].forEach(id=>{ const el=$(id); if(el)el.value=''; });
+  $('nv-fecha').value = today();
   $('nv-dom').value = 12000;
   // Reset toggles
   resetTg('tg-envio','Medellín'); resetTg('tg-precio','Detal');
   resetTg('tg-dom','TechX'); resetTg('tg-pago','Contraentrega');
   $('nv-ciudad-row').style.display='none'; $('nv-ced-row').classList.add('h');
+  $('nv-ref-row').classList.add('h');
   renderLines();
   calcTot();
 }
@@ -847,6 +859,10 @@ function tog(id, btn) {
     const tp = btn.dataset.v;
     lines.forEach(l=>{ if(l.sku){ const p=productos.find(x=>x.SKU===l.sku); if(p) l.precio=tp==='Mayorista'?(parseFloat(p.Precio_Mayorista)||0):(parseFloat(p.Precio_Detal)||0); } });
     renderLines();
+  }
+  if(id==='tg-pago'){
+    $('nv-ref-row').classList.toggle('h', btn.dataset.v !== 'Pagado');
+    if(btn.dataset.v !== 'Pagado') $('nv-ref').value = '';
   }
   calcTot();
 }
@@ -905,8 +921,10 @@ async function submitVenta() {
   if(!cli||!tel||!dir) return toast('Nombre, teléfono y dirección son obligatorios',true);
 
   const envio=getToggle('tg-envio');
+  const _obs=$('nv-obs').value.trim();
+  const _ref=$('nv-ref').value.trim();
   const payload={
-    fecha:today(), cliente:cli, telefono:tel,
+    fecha:$('nv-fecha').value||today(), cliente:cli, telefono:tel,
     ciudad: envio==='Medellín'?'Medellín':($('nv-ciu').value.trim()||'Medellín'),
     barrio_direccion:dir, cedula:$('nv-ced').value.trim(),
     mensajero:$('nv-men').value.trim(),
@@ -915,7 +933,7 @@ async function submitVenta() {
     tipo_precio:getToggle('tg-precio'),
     estado_pago:getToggle('tg-pago'),
     estado_pedido:'Pendiente',
-    observaciones:$('nv-obs').value.trim(),
+    observaciones:_ref?`[Ref. pago: ${_ref}]${_obs?' — '+_obs:''}`:_obs,
     productos:validLines.map(l=>({sku:l.sku,cantidad:l.cant,precio_unitario:l.precio}))
   };
 
