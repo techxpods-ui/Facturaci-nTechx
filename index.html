@@ -495,24 +495,33 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
       <!-- Tab Gastos -->
       <div id="tab-gastos">
-        <div style="display:flex;gap:8px;margin-bottom:12px">
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+          <div class="tg" id="tg-gperiod" style="flex-shrink:0">
+            <button class="to on" data-v="mes" onclick="tog('tg-gperiod',this);loadGastos()">Este mes</button>
+            <button class="to" data-v="todo" onclick="tog('tg-gperiod',this);loadGastos()">Todo</button>
+          </div>
           <select id="g-cat" class="fi" style="flex:1" onchange="loadGastos()">
-            <option value="">Todas las categorías</option>
+            <option value="">Todas categorías</option>
             <option value="Pauta">Pauta</option>
             <option value="Flete">Flete</option>
             <option value="Restaurante">Restaurante</option>
             <option value="Nomina">Nómina</option>
             <option value="Varios">Varios</option>
           </select>
-          <button class="btn btn-p btn-sm" onclick="openModal('modal-gasto')" style="flex-shrink:0">+ Gasto</button>
+          <button class="btn btn-p btn-sm" onclick="$('g-fecha').value=today();openModal('modal-gasto')" style="flex-shrink:0">+ Gasto</button>
         </div>
+        <div id="g-total"></div>
         <div class="card" id="g-list"><div class="ld"><div class="sp"></div></div></div>
       </div>
 
       <!-- Tab Banco -->
       <div id="tab-banco" class="h">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-          <button class="btn btn-p btn-sm" onclick="openModal('modal-banco')">+ Movimiento</button>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <div class="card" style="flex:1;margin:0;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:12px;color:var(--gm)">Saldo actual</span>
+            <span id="b-saldo-val" style="font-size:18px;font-weight:700;color:#4CAF7A">–</span>
+          </div>
+          <button class="btn btn-p btn-sm" onclick="$('ban-fecha').value=today();openModal('modal-banco')" style="flex-shrink:0">+ Movimiento</button>
         </div>
         <div class="card" id="b-list"><div class="ld"><div class="sp"></div></div></div>
       </div>
@@ -522,7 +531,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <section class="sc" id="sc-inv">
       <div class="sh">
         <span class="sh-t">Stock actual</span>
-        <button class="btn btn-p btn-sm" onclick="openModal('modal-compra')">+ Compra</button>
+        <button class="btn btn-p btn-sm" onclick="$('com-fecha').value=today();openModal('modal-compra')">+ Compra</button>
       </div>
       <div class="card" id="inv-list"><div class="ld"><div class="sp"></div></div></div>
     </section>
@@ -1149,9 +1158,18 @@ async function loadGastos() {
   box.innerHTML='<div class="ld"><div class="sp"></div></div>';
   const params={};
   if($('g-cat').value) params.categoria=$('g-cat').value;
+  const period=getToggle('tg-gperiod')||'mes';
+  if(period==='mes'){
+    const n=new Date(); const y=n.getFullYear(),m=n.getMonth();
+    params.fecha_inicio=`${y}-${String(m+1).padStart(2,'0')}-01`;
+    params.fecha_fin=`${y}-${String(m+1).padStart(2,'0')}-${new Date(y,m+1,0).getDate()}`;
+  }
   const r=await api('getGastos',params);
   if(!r.success){ box.innerHTML=`<div class="ld" style="color:#E87070">${r.error}</div>`; return; }
   const g=r.data;
+  const tot=g.reduce((s,x)=>s+(parseFloat(x.Valor)||0),0);
+  const totEl=$('g-total');
+  if(totEl) totEl.innerHTML=g.length?`<div style="text-align:right;font-size:11px;color:var(--gm);margin-bottom:6px">${g.length} gasto${g.length===1?'':'s'} · Total: <strong style="color:#E87070">${fCOP(tot)}</strong></div>`:'';
   box.innerHTML = g.length
     ? g.map(x=>`
       <div class="mr">
@@ -1162,7 +1180,7 @@ async function loadGastos() {
         </div>
         <div class="mr-right"><div class="mr-amt out">– ${fCOP(x.Valor)}</div></div>
       </div>`).join('')
-    : '<div class="ld">No hay gastos registrados</div>';
+    : '<div class="ld">No hay gastos en este período</div>';
 }
 
 async function loadBanco() {
@@ -1171,6 +1189,17 @@ async function loadBanco() {
   const r=await api('getBanco',{});
   if(!r.success){ box.innerHTML=`<div class="ld" style="color:#E87070">${r.error}</div>`; return; }
   const movs=r.data.reverse();
+  // Actualizar saldo actual
+  const saldoEl=$('b-saldo-val');
+  if(saldoEl){
+    if(movs.length){
+      const saldo=parseFloat(movs[0].Saldo_Acumulado)||0;
+      saldoEl.textContent=fCOP(saldo);
+      saldoEl.style.color=saldo<0?'#E87070':'#4CAF7A';
+    } else {
+      saldoEl.textContent='$0';
+    }
+  }
   box.innerHTML = movs.length
     ? movs.map(m=>{
         const isIn=m.Tipo==='Entrada';
@@ -1186,7 +1215,7 @@ async function loadBanco() {
           </div>
         </div>`;
       }).join('')
-    : '<div class="ld">No hay movimientos</div>';
+    : '<div class="ld">No hay movimientos registrados</div>';
 }
 
 async function submitGasto() {
