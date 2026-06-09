@@ -381,7 +381,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <div class="fg">
             <label class="fl">Mensajero</label>
             <input id="nv-men" class="fi" placeholder="Nombre" list="men-list" autocomplete="off">
-            <datalist id="men-list"><option value="Camilo"></datalist>
+            <datalist id="men-list"><option value="Camilo"><option value="Interrapidísimo"></datalist>
           </div>
           <div class="fg">
             <label class="fl">Tipo precio</label>
@@ -468,7 +468,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         </div>
         <div class="fg" style="margin-bottom:0">
           <input id="dom-men" class="fi" placeholder="Mensajero" list="men-list2" autocomplete="off" oninput="loadDom()">
-          <datalist id="men-list2"><option value="Camilo"></datalist>
+          <datalist id="men-list2"><option value="Camilo"><option value="Interrapidísimo"></datalist>
         </div>
       </div>
       <div class="card" style="overflow-x:auto;margin-bottom:12px">
@@ -923,12 +923,13 @@ async function submitVenta() {
   const envio=getToggle('tg-envio');
   const _obs=$('nv-obs').value.trim();
   const _ref=$('nv-ref').value.trim();
+  const _domStr=$('nv-dom').value.trim();
   const payload={
     fecha:$('nv-fecha').value||today(), cliente:cli, telefono:tel,
     ciudad: envio==='Medellín'?'Medellín':($('nv-ciu').value.trim()||'Medellín'),
     barrio_direccion:dir, cedula:$('nv-ced').value.trim(),
     mensajero:$('nv-men').value.trim(),
-    costo_domicilio:parseFloat($('nv-dom').value)||12000,
+    costo_domicilio:_domStr===''?12000:(parseFloat(_domStr)||0),
     quien_paga_domicilio:getToggle('tg-dom'),
     tipo_precio:getToggle('tg-precio'),
     estado_pago:getToggle('tg-pago'),
