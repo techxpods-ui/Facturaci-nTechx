@@ -133,6 +133,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .b-cont{background:#1A1A10;color:#C8B860}
 .b-det{background:#1A1A1A;color:#A0A0A0}
 .b-may{background:#1A2030;color:#8090C0}
+.b-reco{background:#0E1820;color:#60B8D0}
 
 /* ── VENTA CARDS ───────────────────────────────────────────────── */
 .vc{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .15s;-webkit-tap-highlight-color:rgba(255,255,255,.05)}
@@ -426,6 +427,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <label class="fl">Estado de pago</label>
           <div class="tg" id="tg-pago">
             <button class="to on" data-v="Contraentrega" onclick="tog('tg-pago',this)">Contraentrega</button>
+            <button class="to" data-v="Pendiente" onclick="tog('tg-pago',this)">Pend. pago</button>
             <button class="to" data-v="Pagado" onclick="tog('tg-pago',this)">Ya pagado</button>
           </div>
         </div>
@@ -450,38 +452,59 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
     <!-- ── VENTAS ── -->
     <section class="sc" id="sc-ventas">
-      <div class="frow" style="margin-bottom:12px">
-        <div class="fg" style="margin-bottom:0">
-          <input type="date" id="v-fecha" class="fi" onchange="loadVentas()">
-        </div>
-        <div class="fg" style="margin-bottom:0">
-          <select id="v-epago" class="fi" onchange="loadVentas()">
-            <option value="">Todos los pagos</option>
-            <option value="Pagado">Pagado</option>
-            <option value="Contraentrega">Contraentrega</option>
-            <option value="Pendiente">Pendiente</option>
-          </select>
-        </div>
+      <div class="tabs" style="margin-bottom:12px">
+        <button class="tab on" id="tab-vv" onclick="switchVTab('ventas')">Ventas</button>
+        <button class="tab" id="tab-vd" onclick="switchVTab('deudores')">Deudores</button>
       </div>
-      <select id="v-epedido" class="fi" style="margin-bottom:12px" onchange="loadVentas()">
-        <option value="">Todos los estados</option>
-        <option value="Pendiente">Pendiente</option>
-        <option value="Despachado">Despachado</option>
-        <option value="Entregado">Entregado</option>
-        <option value="Garantia">Garantía</option>
-        <option value="Devolucion">Devolución</option>
-      </select>
-      <div id="v-list"><div class="ld"><div class="sp"></div></div></div>
+
+      <!-- Sub-tab Ventas -->
+      <div id="vtab-ventas">
+        <div class="frow" style="margin-bottom:8px">
+          <div class="fg" style="margin-bottom:0">
+            <input type="date" id="v-fecha" class="fi" onchange="loadVentas()">
+          </div>
+          <div class="fg" style="margin-bottom:0">
+            <select id="v-epago" class="fi" onchange="loadVentas()">
+              <option value="">Todos los pagos</option>
+              <option value="Pagado">Pagado</option>
+              <option value="Contraentrega">Contraentrega</option>
+              <option value="Pendiente">Pendiente</option>
+            </select>
+          </div>
+        </div>
+        <select id="v-epedido" class="fi" style="margin-bottom:12px" onchange="loadVentas()">
+          <option value="">Todos los estados</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Despachado">Despachado</option>
+          <option value="Recogido">Recogido</option>
+          <option value="Entregado">Entregado</option>
+          <option value="Garantia">Garantía</option>
+          <option value="Devolucion">Devolución</option>
+        </select>
+        <div id="v-list"><div class="ld"><div class="sp"></div></div></div>
+      </div>
+
+      <!-- Sub-tab Deudores -->
+      <div id="vtab-deudores" class="h">
+        <div id="d-summary" style="margin-bottom:12px"></div>
+        <div id="d-list"><div class="ld"><div class="sp"></div></div></div>
+      </div>
     </section>
 
     <!-- ── DOMICILIOS ── -->
     <section class="sc" id="sc-dom">
+      <!-- Toggle Mensajeros / Interrapidísimo -->
+      <div class="tg" id="tg-dom-tipo" style="margin-bottom:12px">
+        <button class="to on" data-v="mensajero" onclick="tog('tg-dom-tipo',this);loadDom()">Mensajeros</button>
+        <button class="to" data-v="interrapidisimo" onclick="tog('tg-dom-tipo',this);loadDom()">Interrapidísimo</button>
+        <button class="to" data-v="todos" onclick="tog('tg-dom-tipo',this);loadDom()">Todos</button>
+      </div>
       <div class="frow" style="margin-bottom:12px">
         <div class="fg" style="margin-bottom:0">
           <input type="date" id="dom-fecha" class="fi" onchange="loadDom()">
         </div>
-        <div class="fg" style="margin-bottom:0">
-          <input id="dom-men" class="fi" placeholder="Mensajero" list="men-list2" autocomplete="off" oninput="loadDom()">
+        <div class="fg" style="margin-bottom:0" id="dom-men-row">
+          <input id="dom-men" class="fi" placeholder="Filtrar mensajero..." list="men-list2" autocomplete="off" oninput="loadDom()">
           <datalist id="men-list2"><option value="Camilo"><option value="Interrapidísimo"></datalist>
         </div>
       </div>
@@ -493,10 +516,11 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <tbody id="dom-tbody"><tr><td colspan="5" class="ld">Cargando...</td></tr></tbody>
         </table>
       </div>
-      <div class="card">
-        <div class="pl-row sub"><span class="pl-l">Cobrado a clientes</span><span class="pl-v" id="dom-cobrado">—</span></div>
-        <div class="pl-row"><span class="pl-l">A pagar al mensajero</span><span class="pl-v" id="dom-apagar">—</span></div>
-        <div class="pl-row tot"><span class="pl-l">Neto TechX recibe</span><span class="pl-v" id="dom-neto">—</span></div>
+      <!-- Cuadre mensajero (solo visible en modo Mensajeros) -->
+      <div class="card" id="dom-cuadre">
+        <div class="pl-row sub"><span class="pl-l">Cobrado a clientes (entregados)</span><span class="pl-v" id="dom-cobrado">—</span></div>
+        <div class="pl-row"><span class="pl-l">Domicilios a descontar</span><span class="pl-v" id="dom-apagar">—</span></div>
+        <div class="pl-row tot"><span class="pl-l">Neto que te entrega el mensajero</span><span class="pl-v" id="dom-neto">—</span></div>
       </div>
     </section>
 
@@ -735,7 +759,7 @@ function openModal(id) { $(id).classList.remove('h'); document.body.style.overfl
 function closeModal(id) { $(id).classList.add('h'); document.body.style.overflow=''; }
 
 function badgePago(s) { return {Pagado:'b-pago',Contraentrega:'b-cont',Pendiente:'b-pend'}[s]||'b-pend'; }
-function badgePedido(s) { return {Pendiente:'b-pend',Despachado:'b-desp',Entregado:'b-entr',Garantia:'b-gar',Devolucion:'b-dev'}[s]||'b-pend'; }
+function badgePedido(s) { return {Pendiente:'b-pend',Despachado:'b-desp',Recogido:'b-reco',Entregado:'b-entr',Garantia:'b-gar',Devolucion:'b-dev'}[s]||'b-pend'; }
 
 // ── LOGIN ────────────────────────────────────────────────────────
 function nk(n) {
@@ -769,9 +793,12 @@ function goto(s) {
   $('btn-back').classList.toggle('h', s!=='nv');
   $('btn-print-dom').classList.toggle('h', s!=='dom');
   $('fab').classList.toggle('h', s==='nv');
+  // Limitar fechas de filtros a hoy (no fechas futuras)
+  const t=today();
+  ['v-fecha','dom-fecha','com-fecha'].forEach(id=>{ const el=$(id); if(el) el.max=t; });
   // Load data
   if(s==='home') loadHome();
-  if(s==='ventas') loadVentas();
+  if(s==='ventas'){ switchVTab('ventas'); loadVentas(); }
   if(s==='dom') loadDom();
   if(s==='gb') loadGB();
   if(s==='inv') loadInv();
@@ -871,6 +898,7 @@ function initNV() {
   // Reset form
   ['nv-cli','nv-tel','nv-ciu','nv-dir','nv-ced','nv-men','nv-obs','nv-ref'].forEach(id=>{ const el=$(id); if(el)el.value=''; });
   $('nv-fecha').value = today();
+  $('nv-fecha').max = today();
   $('nv-dom').value = 12000;
   // Reset toggles
   resetTg('tg-envio','Medellín'); resetTg('tg-precio','Detal');
@@ -1053,6 +1081,51 @@ async function loadVentas() {
     </div>`).join('');
 }
 
+function switchVTab(t) {
+  ['ventas','deudores'].forEach(x=>{
+    $('tab-v'+x[0]).classList.toggle('on', x===t);
+    $('vtab-'+x).classList.toggle('h', x!==t);
+  });
+  if(t==='deudores') loadDeudores();
+}
+
+async function loadDeudores() {
+  $('d-list').innerHTML='<div class="ld"><div class="sp"></div></div>';
+  $('d-summary').innerHTML='';
+  const r=await api('getVentas',{});
+  if(!r.success){ $('d-list').innerHTML=`<div class="ld" style="color:#E87070">${r.error}</div>`; return; }
+
+  const deudores=r.data.filter(v=>v.Estado_Pago!=='Pagado');
+  if(!deudores.length){
+    $('d-summary').innerHTML='';
+    $('d-list').innerHTML='<div class="ld" style="color:#4CAF7A">✓ No hay deudores — todo pagado</div>';
+    return;
+  }
+
+  const totalDeuda=deudores.reduce((s,v)=>s+(parseFloat(v.Total_Factura)||0),0);
+  const porTipo={Contraentrega:0,Pendiente:0};
+  deudores.forEach(v=>{ if(porTipo[v.Estado_Pago]!==undefined) porTipo[v.Estado_Pago]+=(parseFloat(v.Total_Factura)||0); });
+
+  $('d-summary').innerHTML=`
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div><div style="font-size:11px;color:var(--gm)">Total adeudado</div><div style="font-size:20px;font-weight:900;color:#E87070">${fCOP(totalDeuda)}</div></div>
+      <div style="display:flex;gap:10px">
+        <div style="text-align:center"><div style="font-size:10px;color:var(--gm)">Contraentrega</div><div style="font-size:14px;font-weight:700">${fCOP(porTipo.Contraentrega)}</div></div>
+        <div style="text-align:center"><div style="font-size:10px;color:var(--gm)">Pend. pago</div><div style="font-size:14px;font-weight:700">${fCOP(porTipo.Pendiente)}</div></div>
+      </div>
+    </div>`;
+
+  $('d-list').innerHTML=deudores.map(v=>`
+    <div class="vc" onclick="showVD('${v.ID_Factura}');_ventas=deudores||_ventas">
+      <div class="vc-hd"><span class="vc-id">${v.ID_Factura} · ${fDate(v.Fecha)}</span><span class="bdg ${badgePago(v.Estado_Pago)}">${v.Estado_Pago}</span></div>
+      <div class="vc-cl">${v.Cliente||'—'}</div>
+      <div class="vc-mt">${v.Ciudad||''} ${v.Mensajero?'· '+v.Mensajero:''}</div>
+      <div class="vc-ft"><span class="bdg ${badgePedido(v.Estado_Pedido)}">${v.Estado_Pedido}</span><span class="vc-tot" style="color:#E87070">${fCOP(v.Total_Factura)}</span></div>
+    </div>`).join('');
+  // Hacer disponible para showVD
+  _ventas=[..._ventas,...deudores.filter(d=>!_ventas.find(v=>v.ID_Factura===d.ID_Factura))];
+}
+
 function showVD(id) {
   const v=_ventas.find(x=>x.ID_Factura===id); if(!v) return;
   $('vd-id').textContent=v.ID_Factura;
@@ -1075,7 +1148,7 @@ function showVD(id) {
     `:''}`;
 
   const acts=$('vd-actions');
-  const estados=['Pendiente','Despachado','Entregado','Garantia','Devolucion'].filter(e=>e!==v.Estado_Pedido);
+  const estados=['Pendiente','Despachado','Recogido','Entregado','Garantia','Devolucion'].filter(e=>e!==v.Estado_Pedido);
   acts.innerHTML=`
     <div class="fg" style="margin-top:16px">
       <label class="fl">Cambiar estado del pedido</label>
@@ -1126,12 +1199,18 @@ async function loadDom() {
   tbody.innerHTML='<tr><td colspan="5" class="ld">Cargando...</td></tr>';
   const params={};
   if($('dom-fecha').value){ params.fecha_inicio=$('dom-fecha').value; params.fecha_fin=$('dom-fecha').value; }
-  if($('dom-men').value) params.mensajero=$('dom-men').value.trim();
+  // Solo pasar mensajero si está en modo Interrapidísimo o si hay texto en el input
+  const tipo = getToggle('tg-dom-tipo')||'mensajero';
+  if(tipo==='interrapidisimo') params.mensajero='Interrapidísimo';
+  else if($('dom-men').value.trim()) params.mensajero=$('dom-men').value.trim();
 
   const r=await api('getDomicilios',params);
   if(!r.success){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:16px;color:#E87070">${r.error}</td></tr>`; return; }
   _domData=r.data;
-  const {domicilios,resumen}=r.data;
+  let domicilios=r.data.domicilios;
+
+  // Filtro cliente: excluir Interrapidísimo cuando estamos en vista Mensajeros
+  if(tipo==='mensajero') domicilios=domicilios.filter(d=>d.Mensajero!=='Interrapidísimo');
 
   tbody.innerHTML = domicilios.length
     ? domicilios.map(d=>`<tr>
@@ -1143,9 +1222,22 @@ async function loadDom() {
       </tr>`).join('')
     : '<tr><td colspan="5" style="text-align:center;padding:16px;color:#A0A0A0">No hay domicilios</td></tr>';
 
-  $('dom-cobrado').textContent = fCOP(resumen.cobrado_mensajero);
-  $('dom-apagar').textContent = fCOP(resumen.a_pagar_mensajero);
-  $('dom-neto').textContent = fCOP(resumen.neto_a_entregar_techx);
+  // Recalcular resumen sobre la lista filtrada
+  const entregados = domicilios.filter(d=>d.Estado==='Entregado');
+  const cobrado    = entregados.reduce((s,d)=>s+(parseFloat(d.Precio_Venta)||0),0);
+  const apagar     = domicilios.filter(d=>d.Quien_Paga==='TechX').reduce((s,d)=>s+(parseFloat(d.Costo_Domicilio)||0),0);
+  const neto       = cobrado - apagar;
+
+  // Mostrar/ocultar cuadre según el tipo
+  const cuadre=$('dom-cuadre');
+  if(tipo==='interrapidisimo'){
+    cuadre.style.display='none';
+  } else {
+    cuadre.style.display='';
+    $('dom-cobrado').textContent = fCOP(cobrado);
+    $('dom-apagar').textContent  = fCOP(apagar);
+    $('dom-neto').textContent    = fCOP(neto);
+  }
 }
 
 function printDomPage() {
@@ -1256,7 +1348,8 @@ async function loadBanco() {
 }
 
 function openGastoModal() {
-  $('g-fecha').value = today();
+  const t=today();
+  $('g-fecha').value=t; $('g-fecha').max=t;
   resetTg('tg-gasto-banco','si');
   openModal('modal-gasto');
 }
@@ -1291,7 +1384,8 @@ async function submitGasto() {
 }
 
 function openBancoModal() {
-  $('ban-fecha').value = today();
+  const t=today();
+  $('ban-fecha').value=t; $('ban-fecha').max=t;
   $('ban-val').value = '';
   $('ban-desc').value = '';
   clearFac();
