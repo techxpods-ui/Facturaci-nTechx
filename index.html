@@ -1385,14 +1385,15 @@ async function loadDom() {
         <td>${d.Cliente||'—'}</td>
         <td>${fCOP(d.Precio_Venta)}</td>
         <td>${fCOP(d.Costo_Domicilio)}</td>
-        <td><span class="bdg ${badgePedido(d.Estado)}">${d.Estado||'—'}</span>${d.Estado_Pago_Venta==='Pagado'?'<div style="font-size:9px;color:#4CAF7A;margin-top:2px">✓ ya pagada</div>':''}</td>
+        <td><span class="bdg ${badgePedido(d.Estado)}">${d.Estado||'—'}</span>${d.Estado_Pago_Venta==='Pagado'?'<div style="font-size:9px;color:#4CAF7A;margin-top:2px">✓ ya pagada</div>':d.Estado_Pago_Venta==='Pendiente'?'<div style="font-size:9px;color:#D4A017;margin-top:2px">◷ no cobrar</div>':''}</td>
       </tr>`).join('')
     : '<tr><td colspan="5" style="text-align:center;padding:16px;color:#A0A0A0">No hay domicilios</td></tr>';
 
-  // Cuadre sobre la lista filtrada. El mensajero solo trae plata de facturas
-  // NO pagadas por otro medio (las pagadas por transferencia no pasan por él).
+  // Cuadre sobre la lista filtrada. El mensajero solo trae plata de contraentregas:
+  // ni las ya Pagadas (transferencia anticipada) ni las Pendientes (el cliente paga
+  // después directo a TechX) pasan por sus manos.
   const entregados = domicilios.filter(d=>d.Estado==='Entregado');
-  const cobrado    = entregados.filter(d=>d.Estado_Pago_Venta!=='Pagado').reduce((s,d)=>s+(parseFloat(d.Precio_Venta)||0),0);
+  const cobrado    = entregados.filter(d=>d.Estado_Pago_Venta!=='Pagado'&&d.Estado_Pago_Venta!=='Pendiente').reduce((s,d)=>s+(parseFloat(d.Precio_Venta)||0),0);
   const apagar     = domicilios.filter(d=>d.Quien_Paga==='TechX').reduce((s,d)=>s+(parseFloat(d.Costo_Domicilio)||0),0);
   const neto       = cobrado - apagar;
 
@@ -1447,9 +1448,9 @@ function printDomPage() {
   const fecha=$('dom-fecha').value||today();
   const tipo=getToggle('tg-dom-tipo')||'mensajero';
   const men=tipo==='interrapidisimo'?'Interrapidísimo':($('dom-men').value||'Todos');
-  // Mismo cuadre que la pantalla: lista filtrada y sin facturas ya pagadas
+  // Mismo cuadre que la pantalla: solo contraentregas (sin Pagadas ni Pendientes)
   const domicilios=_domList;
-  const cobrado=domicilios.filter(d=>d.Estado==='Entregado'&&d.Estado_Pago_Venta!=='Pagado').reduce((s,d)=>s+(parseFloat(d.Precio_Venta)||0),0);
+  const cobrado=domicilios.filter(d=>d.Estado==='Entregado'&&d.Estado_Pago_Venta!=='Pagado'&&d.Estado_Pago_Venta!=='Pendiente').reduce((s,d)=>s+(parseFloat(d.Precio_Venta)||0),0);
   const apagar=domicilios.filter(d=>d.Quien_Paga==='TechX').reduce((s,d)=>s+(parseFloat(d.Costo_Domicilio)||0),0);
   $('pw').innerHTML=`<div class="dom-print">
     <div class="dp-hd">
@@ -1460,7 +1461,7 @@ function printDomPage() {
       <thead><tr><th>#</th><th>Mensajero</th><th>Cliente</th><th>ID Factura</th><th>Precio venta</th><th>Dom.</th><th>Quien paga</th><th>Estado</th></tr></thead>
       <tbody>${domicilios.map((d,i)=>`<tr>
         <td>${i+1}</td><td>${d.Mensajero||'—'}</td><td>${d.Cliente||'—'}</td>
-        <td>${d.ID_Factura||'—'}</td><td>${fCOP(d.Precio_Venta)}${d.Estado_Pago_Venta==='Pagado'?' ✓pag':''}</td>
+        <td>${d.ID_Factura||'—'}</td><td>${fCOP(d.Precio_Venta)}${d.Estado_Pago_Venta==='Pagado'?' ✓pag':d.Estado_Pago_Venta==='Pendiente'?' ◷pend':''}</td>
         <td>${fCOP(d.Costo_Domicilio)}</td><td>${d.Quien_Paga||'—'}</td><td>${d.Estado||'—'}</td>
       </tr>`).join('')}</tbody>
     </table>
