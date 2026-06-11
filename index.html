@@ -314,6 +314,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <button class="tb-back h" id="btn-back" onclick="goBack()">‹</button>
     <div class="tb-title" id="tb-title">TechX</div>
     <button class="tb-action h" id="btn-print-dom" onclick="printDomPage()" title="Imprimir formato">🖨</button>
+    <button class="tb-action" id="btn-refresh" onclick="refreshScreen()" title="Actualizar">↻</button>
   </header>
 
   <!-- Screens -->
@@ -337,10 +338,20 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <div class="stat-l">⏳ Pedidos pendientes</div>
           <div class="stat-v" id="h-pend" style="font-size:28px">—</div>
         </div>
-        <div class="card" style="cursor:pointer" onclick="applyFilter('ventas','ep','Despachado')">
-          <div class="stat-l">🚚 Despachados</div>
-          <div class="stat-v" id="h-desp" style="font-size:28px">—</div>
+        <div class="card" style="cursor:pointer" onclick="gotoDeudores()">
+          <div class="stat-l">💰 Deudores</div>
+          <div class="stat-v rd" id="h-deud" style="font-size:28px">—</div>
+          <div style="font-size:11px;color:var(--gm);margin-top:2px" id="h-deud-monto"></div>
         </div>
+      </div>
+
+      <!-- Gráfico ventas últimos 14 días -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+          <span class="stat-l" style="margin:0">📊 Ventas últimos 14 días</span>
+          <span style="font-size:11px;color:var(--gm)" id="ch14-tot"></span>
+        </div>
+        <div id="chart14"><div class="ld" style="padding:16px"><div class="sp"></div></div></div>
       </div>
 
       <div class="sh" style="margin-top:20px"><span class="sh-t">Estado de resultados</span></div>
@@ -350,9 +361,17 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <button class="pb" data-p="semana" onclick="setPeriod('semana',this)">Esta semana</button>
         <button class="pb" data-p="todo" onclick="setPeriod('todo',this)">Todo</button>
       </div>
+      <div class="cg c3">
+        <div class="card"><div class="stat-l">Ticket prom.</div><div class="stat-v" id="k-ticket" style="font-size:15px">—</div></div>
+        <div class="card"><div class="stat-l"># Ventas</div><div class="stat-v" id="k-nv" style="font-size:15px">—</div></div>
+        <div class="card"><div class="stat-l">% Contraent.</div><div class="stat-v" id="k-contra" style="font-size:15px">—</div></div>
+      </div>
       <div class="card" id="pl-box">
         <div class="ld"><div class="sp"></div><span>Cargando...</span></div>
       </div>
+
+      <div class="sh" style="margin-top:18px"><span class="sh-t">🏆 Top productos del período</span></div>
+      <div class="card" id="top-prods" style="margin-bottom:14px"><div class="ld" style="padding:14px">—</div></div>
     </section>
 
     <!-- ── NUEVA VENTA ── -->
@@ -459,6 +478,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 
       <!-- Sub-tab Ventas -->
       <div id="vtab-ventas">
+        <input id="v-q" class="fi" placeholder="🔍 Buscar cliente, teléfono o FAC..." style="margin-bottom:8px" oninput="renderVentasList()" autocomplete="off">
         <div class="frow" style="margin-bottom:8px">
           <div class="fg" style="margin-bottom:0">
             <input type="date" id="v-fecha" class="fi" onchange="loadVentas()">
@@ -475,8 +495,6 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <select id="v-epedido" class="fi" style="margin-bottom:12px" onchange="loadVentas()">
           <option value="">Todos los estados</option>
           <option value="Pendiente">Pendiente</option>
-          <option value="Despachado">Despachado</option>
-          <option value="Recogido">Recogido</option>
           <option value="Entregado">Entregado</option>
           <option value="Garantia">Garantía</option>
           <option value="Devolucion">Devolución</option>
@@ -702,6 +720,25 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   </div>
 </div>
 
+<!-- Domicilio edit -->
+<div class="ov h" id="modal-dom-edit">
+  <div class="modal">
+    <div class="mh"></div>
+    <div class="mt" id="dom-edit-title">Editar domicilio</div>
+    <div id="dom-edit-info" style="font-size:13px;color:var(--gm);margin-bottom:16px"></div>
+    <div class="fg">
+      <label class="fl">Estado</label>
+      <div class="tg" id="tg-dom-estado">
+        <button class="to on" data-v="Entregado" onclick="tog('tg-dom-estado',this)">Entregado</button>
+        <button class="to" data-v="Pendiente" onclick="tog('tg-dom-estado',this)">Pendiente</button>
+        <button class="to" data-v="Devolucion" onclick="tog('tg-dom-estado',this)">Devolución</button>
+      </div>
+    </div>
+    <button class="btn btn-p" onclick="submitDomEdit()">Guardar</button>
+    <button class="btn btn-g" onclick="closeModal('modal-dom-edit')">Cancelar</button>
+  </div>
+</div>
+
 <!-- ════════════════ PRINT WRAPPER ════════════════ -->
 <div id="pw"></div>
 
@@ -743,7 +780,8 @@ async function api(action, data = {}) {
 // ── UTILS ────────────────────────────────────────────────────────
 const fCOP = n => new Intl.NumberFormat('es-CO',{style:'currency',currency:'COP',minimumFractionDigits:0}).format(n||0);
 const fDate = d => { if(!d&&d!==0)return''; let dt; if(typeof d==='string'){const s=d.trim();if(!s)return'';const iso=s.replace(' ','T');dt=new Date(iso.length===10?iso+'T12:00:00':iso);}else{dt=new Date(d);}if(!dt||isNaN(dt.getTime()))return String(d);return dt.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}); };
-const today = () => new Date().toISOString().split('T')[0];
+// Fecha LOCAL (no UTC): toISOString() corría la fecha al día siguiente después de las 7pm en Colombia
+const today = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const $ = id => document.getElementById(id);
 const getToggle = id => { const el=$(id)?.querySelector('.to.on'); return el?el.dataset.v:''; };
 
@@ -792,6 +830,7 @@ function goto(s) {
   $('tb-title').textContent = TITLES[s]||'TechX';
   $('btn-back').classList.toggle('h', s!=='nv');
   $('btn-print-dom').classList.toggle('h', s!=='dom');
+  $('btn-refresh').classList.toggle('h', s==='nv');
   $('fab').classList.toggle('h', s==='nv');
   // Limitar fechas de filtros a hoy (no fechas futuras)
   const t=today();
@@ -808,6 +847,17 @@ function goto(s) {
 }
 
 function goBack() { goto(prevScreen); }
+
+// Recargar los datos de la pantalla actual sin navegar
+function refreshScreen() {
+  const s = document.querySelector('.nb.on')?.dataset.s || 'home';
+  toast('Actualizando…', false, 1200);
+  if(s==='home') loadHome();
+  else if(s==='ventas'){ $('tab-vd').classList.contains('on') ? loadDeudores() : loadVentas(); }
+  else if(s==='dom') loadDom();
+  else if(s==='gb'){ loadGastos(); loadBanco(); }
+  else if(s==='inv') loadInv();
+}
 
 function applyFilter(screen, type, val) {
   goto(screen);
@@ -836,41 +886,132 @@ function populateSkuSelects() {
 }
 
 // ── HOME ─────────────────────────────────────────────────────────
+let _inv = [];
+
+// Período en JS (mismo criterio que el backend: semana inicia lunes)
+function jsPeriod(p) {
+  const n=new Date(); const hoy=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+  if(p==='hoy') return {ini:hoy,fin:hoy};
+  if(p==='semana'){ const dow=hoy.getDay(); const lun=new Date(hoy); lun.setDate(hoy.getDate()-(dow===0?6:dow-1)); return {ini:lun,fin:hoy}; }
+  if(p==='mes') return {ini:new Date(hoy.getFullYear(),hoy.getMonth(),1),fin:hoy};
+  return {ini:null,fin:null};
+}
+function vEnPeriodo(v,per) {
+  if(!v.Fecha) return false;
+  const d=new Date(v.Fecha+'T12:00:00');
+  if(isNaN(d)) return false;
+  if(per.ini&&d<per.ini) return false;
+  if(per.fin){ const f=new Date(per.fin.getFullYear(),per.fin.getMonth(),per.fin.getDate(),23,59,59); if(d>f) return false; }
+  return true;
+}
+
 async function loadHome() {
-  const [rHoy, rVentas] = await Promise.all([
-    api('getResumen',{periodo:'hoy'}),
-    api('getVentas',{})
-  ]);
-  if(rHoy.success){
-    const d = rHoy.data;
-    $('h-ventas').textContent = fCOP(d.ventas_brutas);
-    $('h-costo').textContent = fCOP(d.costo_venta);
-    $('h-ub').textContent = fCOP(d.utilidad_bruta);
-    $('h-gastos').textContent = fCOP(d.total_gastos);
-    const un = $('h-un');
-    un.textContent = fCOP(d.utilidad_neta);
-    un.className = 'stat-v big ' + (d.utilidad_neta>=0?'gr':'rd');
+  const r = await api('getDashboard',{periodo:activePeriod});
+  if(!r.success){ $('pl-box').innerHTML=`<div class="ld" style="color:#E87070">${r.error}</div>`; return; }
+  const {hoy, pl, ventas, inventario} = r.data;
+  _ventas = ventas; _inv = inventario;
+
+  // Resumen del día
+  $('h-ventas').textContent = fCOP(hoy.ventas_brutas);
+  $('h-costo').textContent = fCOP(hoy.costo_venta);
+  $('h-ub').textContent = fCOP(hoy.utilidad_bruta);
+  $('h-gastos').textContent = fCOP(hoy.total_gastos);
+  const un = $('h-un');
+  un.textContent = fCOP(hoy.utilidad_neta);
+  un.className = 'stat-v big ' + (hoy.utilidad_neta>=0?'gr':'rd');
+
+  // Tarjetas accionables
+  $('h-pend').textContent = _ventas.filter(v=>v.Estado_Pedido==='Pendiente').length;
+  const deud = _ventas.filter(v=>v.Estado_Pago!=='Pagado'&&v.Estado_Pedido!=='Devolucion');
+  $('h-deud').textContent = deud.length;
+  $('h-deud-monto').textContent = deud.length ? fCOP(deud.reduce((s,v)=>s+(parseFloat(v.Total_Factura)||0),0)) : '';
+
+  renderChart14();
+  renderPL(pl);
+  renderKPIs(pl);
+  renderTopProds();
+}
+
+function gotoDeudores() { goto('ventas'); setTimeout(()=>switchVTab('deudores'),80); }
+
+// Gráfico de barras SVG — ventas (subtotal productos) por día, últimos 14 días
+function renderChart14() {
+  const box=$('chart14'); if(!box) return;
+  const n=new Date(); const days=[];
+  for(let i=13;i>=0;i--){
+    const d=new Date(n.getFullYear(),n.getMonth(),n.getDate()-i);
+    days.push({key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,lbl:String(d.getDate()),v:0});
   }
-  if(rVentas.success){
-    _ventas = rVentas.data;
-    $('h-pend').textContent = _ventas.filter(v=>v.Estado_Pedido==='Pendiente').length;
-    $('h-desp').textContent = _ventas.filter(v=>v.Estado_Pedido==='Despachado').length;
-  }
-  loadPL('mes');
+  const idx={}; days.forEach((d,i)=>idx[d.key]=i);
+  _ventas.forEach(v=>{
+    if(v.Estado_Pedido==='Devolucion') return;
+    const i=idx[v.Fecha];
+    if(i!==undefined) days[i].v+=parseFloat(v.Subtotal_Productos)||0;
+  });
+  const tot=days.reduce((s,d)=>s+d.v,0);
+  $('ch14-tot').textContent = tot?`Total: ${fCOP(tot)}`:'';
+  if(!tot){ box.innerHTML='<div style="text-align:center;color:var(--gm);font-size:12px;padding:14px">Sin ventas en los últimos 14 días</div>'; return; }
+  const max=Math.max(...days.map(d=>d.v));
+  const W=336,H=100,bw=18,gap=6;
+  const bars=days.map((d,i)=>{
+    const h=d.v?Math.max(4,Math.round(d.v/max*(H-16))):2;
+    const x=i*(bw+gap), y=H-h-12;
+    const esHoy=i===13;
+    return `<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="3" fill="${esHoy?'#F4F4F2':(d.v?'#4CAF7A':'#262626')}" opacity="${d.v&&!esHoy?'.85':'1'}"/>
+      <text x="${x+bw/2}" y="${H-2}" font-size="8" fill="#A0A0A0" text-anchor="middle">${d.lbl}</text>`;
+  }).join('');
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
+}
+
+function renderKPIs(d) {
+  $('k-ticket').textContent = d.facturas_count ? fCOP(d.ventas_brutas/d.facturas_count) : '—';
+  $('k-nv').textContent = d.facturas_count;
+  const per=jsPeriod(activePeriod);
+  const enP=_ventas.filter(v=>v.Estado_Pedido!=='Devolucion'&&vEnPeriodo(v,per));
+  $('k-contra').textContent = enP.length ? Math.round(100*enP.filter(v=>v.Estado_Pago==='Contraentrega').length/enP.length)+'%' : '—';
+}
+
+// Top 5 productos del período activo: unidades, ingresos y % margen real
+function renderTopProds() {
+  const box=$('top-prods'); if(!box) return;
+  const per=jsPeriod(activePeriod);
+  const agg={};
+  _ventas.forEach(v=>{
+    if(v.Estado_Pedido==='Devolucion'||!vEnPeriodo(v,per)) return;
+    (v.productos||[]).forEach(p=>{
+      if(!p.SKU) return;
+      if(!agg[p.SKU]) agg[p.SKU]={uds:0,ing:0};
+      const c=parseFloat(p.Cantidad)||0;
+      agg[p.SKU].uds+=c;
+      agg[p.SKU].ing+=c*(parseFloat(p.Precio_Unitario)||0);
+    });
+  });
+  const rows=Object.keys(agg).map(sku=>{
+    const inv=_inv.find(x=>x.sku===sku);
+    const marg=agg[sku].ing-(inv?inv.costo_promedio:0)*agg[sku].uds;
+    return {sku,nombre:inv?inv.nombre:sku,uds:agg[sku].uds,ing:agg[sku].ing,pct:agg[sku].ing?Math.round(100*marg/agg[sku].ing):0};
+  }).sort((a,b)=>b.ing-a.ing).slice(0,5);
+  box.innerHTML = rows.length
+    ? rows.map((r,i)=>`<div class="pl-row">
+        <span class="pl-l" style="color:var(--ws)">${i+1}. ${r.nombre} <span style="color:var(--gm)">×${r.uds}</span></span>
+        <span class="pl-v">${fCOP(r.ing)} <span style="font-size:10px;color:${r.pct>=30?'#4CAF7A':r.pct>=10?'#D4A017':'#E87070'}">${r.pct}% mg</span></span>
+      </div>`).join('')
+    : '<div class="ld" style="padding:14px">Sin ventas en el período</div>';
 }
 
 async function setPeriod(p, btn) {
   document.querySelectorAll('.pb').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
   activePeriod = p;
-  loadPL(p);
-}
-
-async function loadPL(p) {
   $('pl-box').innerHTML = '<div class="ld"><div class="sp"></div><span>Cargando P&L...</span></div>';
   const r = await api('getResumen',{periodo:p});
   if(!r.success){ $('pl-box').innerHTML=`<div class="ld" style="color:#E87070">${r.error}</div>`; return; }
-  const d = r.data;
+  renderPL(r.data);
+  renderKPIs(r.data);
+  renderTopProds();
+}
+
+function renderPL(d) {
   $('pl-box').innerHTML = `
     <div class="pl-row"><span class="pl-l">Ventas brutas</span><span class="pl-v">${fCOP(d.ventas_brutas)}</span></div>
     <div class="pl-row"><span class="pl-l">Domicilios (cliente)</span><span class="pl-v">${fCOP(d.domicilios_cobrados_cliente)}</span></div>
@@ -1025,8 +1166,11 @@ function nuevaVentaReset() { initNV(); }
 function printRotulo(v) {
   const vd = v || lastVenta;
   if(!vd) return;
-  const esNac = (vd.ciudad||'').toLowerCase()!=='medellín';
-  const esContra = (vd.estado_pago||vd.Estado_Pago||'')!=='Pagado';
+  // Normalizar tildes: "Medellin" y "Medellín" son lo mismo
+  const norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const esNac = norm(vd.ciudad||vd.Ciudad)!=='medellin';
+  const ep = vd.estado_pago||vd.Estado_Pago||'';
+  const esContra = ep==='Contraentrega';
   const tot = vd.total_factura || vd.Total_Factura || 0;
   const prods = (vd.productos||[]).map(p=>`${p.sku||p.SKU||''} ×${p.cantidad||p.Cantidad||1}`).join(', ')||'Ver pedido';
 
@@ -1050,7 +1194,9 @@ function printRotulo(v) {
     <div class="r-cobro${esContra?'':' paid'}">
       ${esContra
         ? `<div class="r-cobro-l">⚠ COBRAR AL ENTREGAR</div><div class="r-cobro-v">${fCOP(tot)}</div>`
-        : `<div class="r-cobro-l">✓ PEDIDO YA PAGADO — NO COBRAR</div>`}
+        : ep==='Pagado'
+          ? `<div class="r-cobro-l">✓ PEDIDO YA PAGADO — NO COBRAR</div>`
+          : `<div class="r-cobro-l">◷ PAGO PENDIENTE ACORDADO — NO COBRAR EN LA ENTREGA</div>`}
     </div>
     <div class="r-foot">TechX · @techxair · Calidad verificada · Medellín, Colombia</div>
   </div>`;
@@ -1070,9 +1216,17 @@ async function loadVentas() {
   const r=await api('getVentas',params);
   if(!r.success){ $('v-list').innerHTML=`<div class="ld" style="color:#E87070">${r.error}</div>`; return; }
   _ventas=r.data;
-  if(!_ventas.length){ $('v-list').innerHTML='<div class="ld">No hay ventas para estos filtros</div>'; return; }
+  renderVentasList();
+}
 
-  $('v-list').innerHTML = _ventas.map(v=>`
+// Renderiza la lista aplicando el buscador local (cliente / teléfono / FAC)
+function renderVentasList() {
+  const q=($('v-q').value||'').trim().toLowerCase();
+  const list=q
+    ? _ventas.filter(v=>(v.Cliente||'').toLowerCase().includes(q)||String(v.Telefono||'').includes(q)||(v.ID_Factura||'').toLowerCase().includes(q))
+    : _ventas;
+  if(!list.length){ $('v-list').innerHTML='<div class="ld">No hay ventas para estos filtros</div>'; return; }
+  $('v-list').innerHTML = list.map(v=>`
     <div class="vc" onclick="showVD('${v.ID_Factura}')">
       <div class="vc-hd"><span class="vc-id">${v.ID_Factura} · ${fDate(v.Fecha)}</span><span class="bdg ${badgePago(v.Estado_Pago)}">${v.Estado_Pago}</span></div>
       <div class="vc-cl">${v.Cliente||'—'}</div>
@@ -1095,7 +1249,8 @@ async function loadDeudores() {
   const r=await api('getVentas',{});
   if(!r.success){ $('d-list').innerHTML=`<div class="ld" style="color:#E87070">${r.error}</div>`; return; }
 
-  const deudores=r.data.filter(v=>v.Estado_Pago!=='Pagado');
+  // Sin pagar, excluyendo devoluciones (una venta devuelta ya no es deuda)
+  const deudores=r.data.filter(v=>v.Estado_Pago!=='Pagado'&&v.Estado_Pedido!=='Devolucion');
   if(!deudores.length){
     $('d-summary').innerHTML='';
     $('d-list').innerHTML='<div class="ld" style="color:#4CAF7A">✓ No hay deudores — todo pagado</div>';
@@ -1115,13 +1270,18 @@ async function loadDeudores() {
       </div>
     </div>`;
 
-  $('d-list').innerHTML=deudores.map(v=>`
-    <div class="vc" onclick="showVD('${v.ID_Factura}');_ventas=deudores||_ventas">
+  const hoyMs=Date.now();
+  $('d-list').innerHTML=deudores.map(v=>{
+    const dias=v.Fecha?Math.max(0,Math.floor((hoyMs-new Date(v.Fecha+'T12:00:00').getTime())/86400000)):0;
+    const agCol=dias>=8?'#E87070':dias>=4?'#D4A017':'var(--gm)';
+    return `
+    <div class="vc" onclick="showVD('${v.ID_Factura}')">
       <div class="vc-hd"><span class="vc-id">${v.ID_Factura} · ${fDate(v.Fecha)}</span><span class="bdg ${badgePago(v.Estado_Pago)}">${v.Estado_Pago}</span></div>
       <div class="vc-cl">${v.Cliente||'—'}</div>
-      <div class="vc-mt">${v.Ciudad||''} ${v.Mensajero?'· '+v.Mensajero:''}</div>
+      <div class="vc-mt">${v.Ciudad||''} ${v.Mensajero?'· '+v.Mensajero:''} · <span style="color:${agCol};font-weight:600">debe hace ${dias}d</span></div>
       <div class="vc-ft"><span class="bdg ${badgePedido(v.Estado_Pedido)}">${v.Estado_Pedido}</span><span class="vc-tot" style="color:#E87070">${fCOP(v.Total_Factura)}</span></div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   // Hacer disponible para showVD
   _ventas=[..._ventas,...deudores.filter(d=>!_ventas.find(v=>v.ID_Factura===d.ID_Factura))];
 }
@@ -1129,9 +1289,12 @@ async function loadDeudores() {
 function showVD(id) {
   const v=_ventas.find(x=>x.ID_Factura===id); if(!v) return;
   $('vd-id').textContent=v.ID_Factura;
+  // Tap en el teléfono → abre WhatsApp (números de 10 dígitos llevan prefijo 57)
+  const telDig=String(v.Telefono||'').replace(/\D/g,'');
+  const waTel=telDig?(telDig.length===10?'57'+telDig:telDig):'';
   $('vd-body').innerHTML=`
     <div class="dr"><span class="dr-k">Cliente</span><span class="dr-v">${v.Cliente||'—'}</span></div>
-    <div class="dr"><span class="dr-k">Teléfono</span><span class="dr-v">${v.Telefono||'—'}</span></div>
+    <div class="dr"><span class="dr-k">Teléfono</span><span class="dr-v">${waTel?`<a href="https://wa.me/${waTel}" target="_blank" rel="noopener" style="color:#4CAF7A;text-decoration:none;font-weight:600">${v.Telefono} 💬</a>`:(v.Telefono||'—')}</span></div>
     <div class="dr"><span class="dr-k">Ciudad</span><span class="dr-v">${v.Ciudad||'—'}</span></div>
     <div class="dr"><span class="dr-k">Dirección</span><span class="dr-v">${v.Barrio_Direccion||'—'}</span></div>
     <div class="dr"><span class="dr-k">Mensajero</span><span class="dr-v">${v.Mensajero||'—'}</span></div>
@@ -1148,7 +1311,7 @@ function showVD(id) {
     `:''}`;
 
   const acts=$('vd-actions');
-  const estados=['Pendiente','Despachado','Recogido','Entregado','Garantia','Devolucion'].filter(e=>e!==v.Estado_Pedido);
+  const estados=['Pendiente','Entregado','Garantia','Devolucion'].filter(e=>e!==v.Estado_Pedido);
   acts.innerHTML=`
     <div class="fg" style="margin-top:16px">
       <label class="fl">Cambiar estado del pedido</label>
@@ -1193,38 +1356,43 @@ function printFromDetail(id) {
 
 // ── DOMICILIOS ───────────────────────────────────────────────────
 let _domData=null;
+let _domList=[];
+
+const esInter = m => (m||'').toLowerCase().includes('interrapid');
 
 async function loadDom() {
   const tbody=$('dom-tbody');
   tbody.innerHTML='<tr><td colspan="5" class="ld">Cargando...</td></tr>';
   const params={};
   if($('dom-fecha').value){ params.fecha_inicio=$('dom-fecha').value; params.fecha_fin=$('dom-fecha').value; }
-  // Solo pasar mensajero si está en modo Interrapidísimo o si hay texto en el input
   const tipo = getToggle('tg-dom-tipo')||'mensajero';
-  if(tipo==='interrapidisimo') params.mensajero='Interrapidísimo';
-  else if($('dom-men').value.trim()) params.mensajero=$('dom-men').value.trim();
+  // El filtro Interrapidísimo se hace acá (tolera tildes/mayúsculas); ocultar el input de mensajero en esa vista
+  $('dom-men-row').style.display = tipo==='interrapidisimo'?'none':'';
+  if(tipo!=='interrapidisimo' && $('dom-men').value.trim()) params.mensajero=$('dom-men').value.trim();
 
   const r=await api('getDomicilios',params);
   if(!r.success){ tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:16px;color:#E87070">${r.error}</td></tr>`; return; }
   _domData=r.data;
   let domicilios=r.data.domicilios;
 
-  // Filtro cliente: excluir Interrapidísimo cuando estamos en vista Mensajeros
-  if(tipo==='mensajero') domicilios=domicilios.filter(d=>d.Mensajero!=='Interrapidísimo');
+  if(tipo==='mensajero')        domicilios=domicilios.filter(d=>!esInter(d.Mensajero));
+  if(tipo==='interrapidisimo')  domicilios=domicilios.filter(d=>esInter(d.Mensajero));
 
+  _domList = domicilios;
   tbody.innerHTML = domicilios.length
-    ? domicilios.map(d=>`<tr>
+    ? domicilios.map((d,i)=>`<tr style="cursor:pointer" onclick="openDomEdit(${i})">
         <td>${d.Mensajero||'—'}</td>
         <td>${d.Cliente||'—'}</td>
         <td>${fCOP(d.Precio_Venta)}</td>
         <td>${fCOP(d.Costo_Domicilio)}</td>
-        <td><span class="bdg ${badgePedido(d.Estado)}">${d.Estado||'—'}</span></td>
+        <td><span class="bdg ${badgePedido(d.Estado)}">${d.Estado||'—'}</span>${d.Estado_Pago_Venta==='Pagado'?'<div style="font-size:9px;color:#4CAF7A;margin-top:2px">✓ ya pagada</div>':''}</td>
       </tr>`).join('')
     : '<tr><td colspan="5" style="text-align:center;padding:16px;color:#A0A0A0">No hay domicilios</td></tr>';
 
-  // Recalcular resumen sobre la lista filtrada
+  // Cuadre sobre la lista filtrada. El mensajero solo trae plata de facturas
+  // NO pagadas por otro medio (las pagadas por transferencia no pasan por él).
   const entregados = domicilios.filter(d=>d.Estado==='Entregado');
-  const cobrado    = entregados.reduce((s,d)=>s+(parseFloat(d.Precio_Venta)||0),0);
+  const cobrado    = entregados.filter(d=>d.Estado_Pago_Venta!=='Pagado').reduce((s,d)=>s+(parseFloat(d.Precio_Venta)||0),0);
   const apagar     = domicilios.filter(d=>d.Quien_Paga==='TechX').reduce((s,d)=>s+(parseFloat(d.Costo_Domicilio)||0),0);
   const neto       = cobrado - apagar;
 
@@ -1240,11 +1408,49 @@ async function loadDom() {
   }
 }
 
+let _domEditIdx = -1;
+
+function openDomEdit(i) {
+  const d = _domList[i];
+  if (!d) return;
+  _domEditIdx = i;
+  $('dom-edit-title').textContent = d.ID_Factura || d.ID_Domicilio || 'Domicilio';
+  $('dom-edit-info').textContent = (d.Cliente||'') + ' · ' + (d.Mensajero||'');
+  // Pre-select current estado
+  const est = d.Estado || 'Pendiente';
+  document.querySelectorAll('#tg-dom-estado .to').forEach(b => {
+    b.classList.toggle('on', b.dataset.v === est);
+  });
+  openModal('modal-dom-edit');
+}
+
+async function submitDomEdit() {
+  const d = _domList[_domEditIdx];
+  if (!d) return;
+  const estado = getToggle('tg-dom-estado');
+  if (!estado) { toast('Selecciona un estado', true); return; }
+  showLoad(true);
+  const r = await api('updateDomicilio', {
+    id_domicilio: d.ID_Domicilio || d.id_domicilio || '',
+    id_factura:   d.ID_Factura   || d.id_factura   || '',
+    estado
+  });
+  showLoad(false);
+  if (!r.success) { toast(r.error || 'Error al guardar', true); return; }
+  toast('Estado actualizado');
+  closeModal('modal-dom-edit');
+  loadDom();
+}
+
 function printDomPage() {
-  if(!_domData) return;
+  if(!_domList.length) return toast('No hay domicilios para imprimir',true);
   const fecha=$('dom-fecha').value||today();
-  const men=$('dom-men').value||'Todos';
-  const {domicilios,resumen}=_domData;
+  const tipo=getToggle('tg-dom-tipo')||'mensajero';
+  const men=tipo==='interrapidisimo'?'Interrapidísimo':($('dom-men').value||'Todos');
+  // Mismo cuadre que la pantalla: lista filtrada y sin facturas ya pagadas
+  const domicilios=_domList;
+  const cobrado=domicilios.filter(d=>d.Estado==='Entregado'&&d.Estado_Pago_Venta!=='Pagado').reduce((s,d)=>s+(parseFloat(d.Precio_Venta)||0),0);
+  const apagar=domicilios.filter(d=>d.Quien_Paga==='TechX').reduce((s,d)=>s+(parseFloat(d.Costo_Domicilio)||0),0);
   $('pw').innerHTML=`<div class="dom-print">
     <div class="dp-hd">
       <div class="dp-title">DOMICILIOS TechX</div>
@@ -1254,14 +1460,14 @@ function printDomPage() {
       <thead><tr><th>#</th><th>Mensajero</th><th>Cliente</th><th>ID Factura</th><th>Precio venta</th><th>Dom.</th><th>Quien paga</th><th>Estado</th></tr></thead>
       <tbody>${domicilios.map((d,i)=>`<tr>
         <td>${i+1}</td><td>${d.Mensajero||'—'}</td><td>${d.Cliente||'—'}</td>
-        <td>${d.ID_Factura||'—'}</td><td>${fCOP(d.Precio_Venta)}</td>
+        <td>${d.ID_Factura||'—'}</td><td>${fCOP(d.Precio_Venta)}${d.Estado_Pago_Venta==='Pagado'?' ✓pag':''}</td>
         <td>${fCOP(d.Costo_Domicilio)}</td><td>${d.Quien_Paga||'—'}</td><td>${d.Estado||'—'}</td>
       </tr>`).join('')}</tbody>
     </table>
     <div class="dp-tot">
-      <div class="dp-tot-i"><div class="dp-tot-l">Cobrado clientes</div><div class="dp-tot-v">${fCOP(resumen.cobrado_mensajero)}</div></div>
-      <div class="dp-tot-i"><div class="dp-tot-l">Pago mensajero</div><div class="dp-tot-v">${fCOP(resumen.a_pagar_mensajero)}</div></div>
-      <div class="dp-tot-i"><div class="dp-tot-l">Neto TechX recibe</div><div class="dp-tot-v">${fCOP(resumen.neto_a_entregar_techx)}</div></div>
+      <div class="dp-tot-i"><div class="dp-tot-l">Cobrado clientes</div><div class="dp-tot-v">${fCOP(cobrado)}</div></div>
+      <div class="dp-tot-i"><div class="dp-tot-l">Pago mensajero</div><div class="dp-tot-v">${fCOP(apagar)}</div></div>
+      <div class="dp-tot-i"><div class="dp-tot-l">Neto TechX recibe</div><div class="dp-tot-v">${fCOP(cobrado-apagar)}</div></div>
     </div>
   </div>`;
   document.getElementById('print-page-size').textContent='@media print{@page{size:A4;margin:8mm}}';
@@ -1472,9 +1678,30 @@ async function loadInv() {
   box.innerHTML='<div class="ld"><div class="sp"></div></div>';
   const r=await api('getInventario',{});
   if(!r.success){ box.innerHTML=`<div class="ld" style="color:#E87070">${r.error}</div>`; return; }
+  _inv=r.data;
   const inv=[...r.data].sort((a,b)=>(b.alerta?1:0)-(a.alerta?1:0)||(a.nombre||'').localeCompare(b.nombre||''));
-  box.innerHTML = inv.length
-    ? inv.map(p=>`<div class="ir">
+  if(!inv.length){ box.innerHTML='<div class="ld">No hay productos activos</div>'; return; }
+
+  // Resumen del inventario
+  const totVal=inv.reduce((s,p)=>s+(p.valor_inventario||0),0);
+  const totUds=inv.reduce((s,p)=>s+(p.stock_actual||0),0);
+
+  // Ritmo de venta: unidades vendidas por SKU en los últimos 30 días (de _ventas si está cargado)
+  const rate={};
+  const lim=Date.now()-30*86400000;
+  _ventas.forEach(v=>{
+    if(v.Estado_Pedido==='Devolucion'||!v.Fecha) return;
+    if(new Date(v.Fecha+'T12:00:00').getTime()<lim) return;
+    (v.productos||[]).forEach(p=>{ if(p.SKU) rate[p.SKU]=(rate[p.SKU]||0)+(parseFloat(p.Cantidad)||0); });
+  });
+
+  box.innerHTML = `<div style="display:flex;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--bd);margin-bottom:4px">
+      <div><div class="stat-l">Valor inventario</div><div class="stat-v" style="font-size:17px">${fCOP(totVal)}</div></div>
+      <div style="text-align:right"><div class="stat-l">Unidades</div><div class="stat-v" style="font-size:17px">${totUds}</div></div>
+    </div>` + inv.map(p=>{
+      const u30=rate[p.sku]||0;
+      const dias=(u30>0&&p.stock_actual>0)?Math.round(p.stock_actual/(u30/30)):null;
+      return `<div class="ir">
         <div class="ir-l">
           <div class="sku">${p.sku}</div>
           <div class="nm">${p.nombre}</div>
@@ -1482,10 +1709,10 @@ async function loadInv() {
         </div>
         <div class="ir-r">
           <div class="ir-stk ${p.alerta?'lo':'ok'}">${p.stock_actual}</div>
-          <div class="ir-val">${p.alerta?'<span style="color:#E87070;font-size:11px">⚠ Stock bajo</span>':''} min ${p.stock_minimo}</div>
+          <div class="ir-val">${p.alerta?'<span style="color:#E87070;font-size:11px">⚠ Stock bajo</span> ':''}min ${p.stock_minimo}${dias!==null?` · <span style="color:${dias<=7?'#E87070':dias<=15?'#D4A017':'var(--gm)'}">~${dias}d</span>`:''}</div>
         </div>
-      </div>`).join('')
-    : '<div class="ld">No hay productos activos</div>';
+      </div>`;
+    }).join('');
 }
 
 function onComSku() {
