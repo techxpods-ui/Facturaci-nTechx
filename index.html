@@ -134,6 +134,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .b-det{background:#1A1A1A;color:#A0A0A0}
 .b-may{background:#1A2030;color:#8090C0}
 .b-reco{background:#0E1820;color:#60B8D0}
+.b-canc{background:#161616;color:#707070;text-decoration:line-through}
 
 /* ── VENTA CARDS ───────────────────────────────────────────────── */
 .vc{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:10px;cursor:pointer;transition:border-color .15s;-webkit-tap-highlight-color:rgba(255,255,255,.05)}
@@ -277,6 +278,14 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .fac-sel{background:var(--bd);border-radius:8px;padding:8px 10px;margin-top:6px;display:flex;align-items:center;justify-content:space-between;gap:6px}
 .fac-sel-txt{flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fac-sel-x{color:#E87070;font-size:18px;cursor:pointer;flex-shrink:0;line-height:1}
+.fac-sel-list{margin-top:6px;display:flex;flex-direction:column;gap:5px}
+.fac-sel-list.h{display:none!important}
+.fac-chip{background:var(--bd);border-radius:8px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.fac-chip-txt{flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fac-chip-x{color:#E87070;font-size:18px;cursor:pointer;flex-shrink:0;line-height:1;width:22px;text-align:center}
+.fac-chip-tot{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;margin-top:2px;border-top:1px solid var(--gd);font-size:12px}
+.fac-chip-tot b{font-family:var(--ft);font-weight:700;font-size:14px;color:#4CAF7A}
+.fac-chip-warn{color:#D4A017;font-size:11px;text-align:right;padding:2px 4px}
 </style>
 </head>
 <body>
@@ -498,6 +507,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           <option value="Entregado">Entregado</option>
           <option value="Garantia">Garantía</option>
           <option value="Devolucion">Devolución</option>
+          <option value="Cancelado">Cancelado</option>
         </select>
         <div id="v-list"><div class="ld"><div class="sp"></div></div></div>
       </div>
@@ -673,19 +683,15 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         </div>
       </div>
     </div>
-    <div class="fg"><label class="fl">Valor</label><input id="ban-val" class="fi" type="number" placeholder="0"></div>
+    <div class="fg"><label class="fl">Valor</label><input id="ban-val" class="fi" type="number" placeholder="0" oninput="onBanValInput()"></div>
     <div class="fg"><label class="fl">Descripción</label><input id="ban-desc" class="fi" placeholder="¿De qué es este movimiento?"></div>
     <div class="fg">
-      <label class="fl">Vincular a factura pendiente (opcional)</label>
+      <label class="fl">Vincular facturas que cubre este pago (opcional)</label>
       <div class="fac-wrap">
-        <input id="ban-fac-q" class="fi" placeholder="Buscar cliente o FAC-..." oninput="searchFacs()" autocomplete="off">
+        <input id="ban-fac-q" class="fi" placeholder="Agregar factura: cliente o FAC-..." oninput="searchFacs()" autocomplete="off">
         <div id="ban-fac-drop" class="fac-drop h"></div>
       </div>
-      <div id="ban-fac-sel" class="fac-sel h">
-        <span class="fac-sel-txt" id="ban-fac-sel-txt"></span>
-        <span class="fac-sel-x" onclick="clearFac()">×</span>
-      </div>
-      <input type="hidden" id="ban-ref">
+      <div id="ban-fac-sel" class="fac-sel-list h"></div>
     </div>
     <button class="btn btn-p" onclick="submitBanco()">Guardar movimiento</button>
     <button class="btn btn-g" onclick="closeModal('modal-banco');clearFac()">Cancelar</button>
@@ -728,10 +734,11 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
     <div id="dom-edit-info" style="font-size:13px;color:var(--gm);margin-bottom:16px"></div>
     <div class="fg">
       <label class="fl">Estado</label>
-      <div class="tg" id="tg-dom-estado">
-        <button class="to on" data-v="Entregado" onclick="tog('tg-dom-estado',this)">Entregado</button>
-        <button class="to" data-v="Pendiente" onclick="tog('tg-dom-estado',this)">Pendiente</button>
-        <button class="to" data-v="Devolucion" onclick="tog('tg-dom-estado',this)">Devolución</button>
+      <div class="tg" id="tg-dom-estado" style="font-size:12px">
+        <button class="to on" data-v="Entregado" onclick="tog('tg-dom-estado',this)" style="font-size:12px">Entregado</button>
+        <button class="to" data-v="Pendiente" onclick="tog('tg-dom-estado',this)" style="font-size:12px">Pendiente</button>
+        <button class="to" data-v="Devolucion" onclick="tog('tg-dom-estado',this)" style="font-size:12px">Devuelto</button>
+        <button class="to" data-v="Cancelado" onclick="tog('tg-dom-estado',this)" style="font-size:12px">Anulado</button>
       </div>
     </div>
     <button class="btn btn-p" onclick="submitDomEdit()">Guardar</button>
@@ -797,7 +804,7 @@ function openModal(id) { $(id).classList.remove('h'); document.body.style.overfl
 function closeModal(id) { $(id).classList.add('h'); document.body.style.overflow=''; }
 
 function badgePago(s) { return {Pagado:'b-pago',Contraentrega:'b-cont',Pendiente:'b-pend'}[s]||'b-pend'; }
-function badgePedido(s) { return {Pendiente:'b-pend',Despachado:'b-desp',Recogido:'b-reco',Entregado:'b-entr',Garantia:'b-gar',Devolucion:'b-dev'}[s]||'b-pend'; }
+function badgePedido(s) { return {Pendiente:'b-pend',Despachado:'b-desp',Recogido:'b-reco',Entregado:'b-entr',Garantia:'b-gar',Devolucion:'b-dev',Cancelado:'b-canc'}[s]||'b-pend'; }
 
 // ── LOGIN ────────────────────────────────────────────────────────
 function nk(n) {
@@ -922,7 +929,7 @@ async function loadHome() {
 
   // Tarjetas accionables
   $('h-pend').textContent = _ventas.filter(v=>v.Estado_Pedido==='Pendiente').length;
-  const deud = _ventas.filter(v=>v.Estado_Pago!=='Pagado'&&v.Estado_Pedido!=='Devolucion');
+  const deud = _ventas.filter(v=>v.Estado_Pago!=='Pagado'&&v.Estado_Pedido!=='Devolucion'&&v.Estado_Pedido!=='Cancelado');
   $('h-deud').textContent = deud.length;
   $('h-deud-monto').textContent = deud.length ? fCOP(deud.reduce((s,v)=>s+(parseFloat(v.Total_Factura)||0),0)) : '';
 
@@ -944,7 +951,7 @@ function renderChart14() {
   }
   const idx={}; days.forEach((d,i)=>idx[d.key]=i);
   _ventas.forEach(v=>{
-    if(v.Estado_Pedido==='Devolucion') return;
+    if(v.Estado_Pedido==='Devolucion'||v.Estado_Pedido==='Cancelado') return;
     const i=idx[v.Fecha];
     if(i!==undefined) days[i].v+=parseFloat(v.Subtotal_Productos)||0;
   });
@@ -967,7 +974,7 @@ function renderKPIs(d) {
   $('k-ticket').textContent = d.facturas_count ? fCOP(d.ventas_brutas/d.facturas_count) : '—';
   $('k-nv').textContent = d.facturas_count;
   const per=jsPeriod(activePeriod);
-  const enP=_ventas.filter(v=>v.Estado_Pedido!=='Devolucion'&&vEnPeriodo(v,per));
+  const enP=_ventas.filter(v=>v.Estado_Pedido!=='Devolucion'&&v.Estado_Pedido!=='Cancelado'&&vEnPeriodo(v,per));
   $('k-contra').textContent = enP.length ? Math.round(100*enP.filter(v=>v.Estado_Pago==='Contraentrega').length/enP.length)+'%' : '—';
 }
 
@@ -977,7 +984,7 @@ function renderTopProds() {
   const per=jsPeriod(activePeriod);
   const agg={};
   _ventas.forEach(v=>{
-    if(v.Estado_Pedido==='Devolucion'||!vEnPeriodo(v,per)) return;
+    if(v.Estado_Pedido==='Devolucion'||v.Estado_Pedido==='Cancelado'||!vEnPeriodo(v,per)) return;
     (v.productos||[]).forEach(p=>{
       if(!p.SKU) return;
       if(!agg[p.SKU]) agg[p.SKU]={uds:0,ing:0};
@@ -1249,8 +1256,8 @@ async function loadDeudores() {
   const r=await api('getVentas',{});
   if(!r.success){ $('d-list').innerHTML=`<div class="ld" style="color:#E87070">${r.error}</div>`; return; }
 
-  // Sin pagar, excluyendo devoluciones (una venta devuelta ya no es deuda)
-  const deudores=r.data.filter(v=>v.Estado_Pago!=='Pagado'&&v.Estado_Pedido!=='Devolucion');
+  // Sin pagar, excluyendo devoluciones y canceladas (ya no son deuda)
+  const deudores=r.data.filter(v=>v.Estado_Pago!=='Pagado'&&v.Estado_Pedido!=='Devolucion'&&v.Estado_Pedido!=='Cancelado');
   if(!deudores.length){
     $('d-summary').innerHTML='';
     $('d-list').innerHTML='<div class="ld" style="color:#4CAF7A">✓ No hay deudores — todo pagado</div>';
@@ -1311,17 +1318,47 @@ function showVD(id) {
     `:''}`;
 
   const acts=$('vd-actions');
-  const estados=['Pendiente','Entregado','Garantia','Devolucion'].filter(e=>e!==v.Estado_Pedido);
-  acts.innerHTML=`
-    <div class="fg" style="margin-top:16px">
-      <label class="fl">Cambiar estado del pedido</label>
-      <select id="vd-new-ep" class="fi">${estados.map(e=>`<option value="${e}">${e}</option>`).join('')}</select>
-      <button class="btn btn-g" style="margin-top:8px" onclick="updateEP('${v.ID_Factura}')">Actualizar estado</button>
-    </div>
-    ${v.Estado_Pago!=='Pagado'?`<button class="btn btn-p" onclick="marcarPagado('${v.ID_Factura}')">✓ Marcar como pagado</button>`:''}
-    <button class="btn btn-g" onclick="printFromDetail('${v.ID_Factura}')">🖨 Imprimir rótulo</button>`;
+  if(v.Estado_Pedido==='Cancelado'){
+    // Venta anulada: solo permitir reactivar o imprimir
+    acts.innerHTML=`
+      <div style="margin-top:16px;padding:12px;background:#161616;border:1px solid var(--bd);border-radius:10px;text-align:center;color:#909090;font-size:12px;line-height:1.5">
+        Pedido <strong style="color:#B0B0B0">ANULADO</strong> — no cuenta en ventas, deudores ni inventario. El producto volvió a bodega.
+      </div>
+      <button class="btn btn-p" style="margin-top:8px" onclick="reactivarVenta('${v.ID_Factura}')">↩ Reactivar pedido</button>
+      <button class="btn btn-g" onclick="printFromDetail('${v.ID_Factura}')">🖨 Imprimir rótulo</button>`;
+  } else {
+    const estados=['Pendiente','Entregado','Garantia','Devolucion'].filter(e=>e!==v.Estado_Pedido);
+    acts.innerHTML=`
+      <div class="fg" style="margin-top:16px">
+        <label class="fl">Cambiar estado del pedido</label>
+        <select id="vd-new-ep" class="fi">${estados.map(e=>`<option value="${e}">${e}</option>`).join('')}</select>
+        <button class="btn btn-g" style="margin-top:8px" onclick="updateEP('${v.ID_Factura}')">Actualizar estado</button>
+      </div>
+      ${v.Estado_Pago!=='Pagado'?`<button class="btn btn-p" onclick="marcarPagado('${v.ID_Factura}')">✓ Marcar como pagado</button>`:''}
+      <button class="btn btn-g" onclick="printFromDetail('${v.ID_Factura}')">🖨 Imprimir rótulo</button>
+      <button class="btn btn-g" style="color:#E87070;border-color:#3a1c1c" onclick="anularVenta('${v.ID_Factura}')">✕ Anular pedido (no se vendió)</button>`;
+  }
 
   openModal('modal-vd');
+}
+
+async function anularVenta(id) {
+  const v=_ventas.find(x=>x.ID_Factura===id);
+  const quien=v&&v.Cliente?` de ${v.Cliente}`:'';
+  if(!confirm(`¿Anular el pedido ${id}${quien}?\n\nSe marca como Cancelado: el producto vuelve a bodega y sale de ventas y deudores. Podrás reactivarlo después si fue un error.`)) return;
+  showLoad(true);
+  const r=await api('updateVenta',{id_factura:id,updates:{Estado_Pedido:'Cancelado'}});
+  showLoad(false);
+  if(r.success){ toast('Pedido anulado ✓'); closeModal('modal-vd'); loadVentas(); }
+  else toast(r.error||'Error al anular',true);
+}
+
+async function reactivarVenta(id) {
+  showLoad(true);
+  const r=await api('updateVenta',{id_factura:id,updates:{Estado_Pedido:'Pendiente'}});
+  showLoad(false);
+  if(r.success){ toast('Pedido reactivado ✓'); closeModal('modal-vd'); loadVentas(); }
+  else toast(r.error||'Error al reactivar',true);
 }
 
 async function updateEP(id) {
@@ -1394,7 +1431,8 @@ async function loadDom() {
   // después directo a TechX) pasan por sus manos.
   const entregados = domicilios.filter(d=>d.Estado==='Entregado');
   const cobrado    = entregados.filter(d=>d.Estado_Pago_Venta!=='Pagado'&&d.Estado_Pago_Venta!=='Pendiente').reduce((s,d)=>s+(parseFloat(d.Precio_Venta)||0),0);
-  const apagar     = domicilios.filter(d=>d.Quien_Paga==='TechX').reduce((s,d)=>s+(parseFloat(d.Costo_Domicilio)||0),0);
+  // Flete a pagar: solo si TechX lo asume y el pedido no fue anulado (no hubo viaje)
+  const apagar     = domicilios.filter(d=>d.Quien_Paga==='TechX'&&d.Estado!=='Cancelado').reduce((s,d)=>s+(parseFloat(d.Costo_Domicilio)||0),0);
   const neto       = cobrado - apagar;
 
   // Mostrar/ocultar cuadre según el tipo
@@ -1451,7 +1489,7 @@ function printDomPage() {
   // Mismo cuadre que la pantalla: solo contraentregas (sin Pagadas ni Pendientes)
   const domicilios=_domList;
   const cobrado=domicilios.filter(d=>d.Estado==='Entregado'&&d.Estado_Pago_Venta!=='Pagado'&&d.Estado_Pago_Venta!=='Pendiente').reduce((s,d)=>s+(parseFloat(d.Precio_Venta)||0),0);
-  const apagar=domicilios.filter(d=>d.Quien_Paga==='TechX').reduce((s,d)=>s+(parseFloat(d.Costo_Domicilio)||0),0);
+  const apagar=domicilios.filter(d=>d.Quien_Paga==='TechX'&&d.Estado!=='Cancelado').reduce((s,d)=>s+(parseFloat(d.Costo_Domicilio)||0),0);
   $('pw').innerHTML=`<div class="dom-print">
     <div class="dp-hd">
       <div class="dp-title">DOMICILIOS TechX</div>
@@ -1543,7 +1581,7 @@ async function loadBanco() {
           <div class="mr-ico ${isIn?'in':'out'}">${isIn?'↑':'↓'}</div>
           <div class="mr-body">
             <div class="mr-desc">${m.Descripcion||m.Tipo}</div>
-            <div class="mr-date">${fDate(m.Fecha)} ${m.ID_Factura_Referencia?'· '+m.ID_Factura_Referencia:''}</div>
+            <div class="mr-date">${fDate(m.Fecha)} ${m.ID_Factura_Referencia?'· '+refLabel(m.ID_Factura_Referencia):''}</div>
           </div>
           <div class="mr-right">
             <div class="mr-amt ${isIn?'in':'out'}">${isIn?'+':'–'} ${fCOP(m.Valor)}</div>
@@ -1552,6 +1590,12 @@ async function loadBanco() {
         </div>`;
       }).join('')
     : '<div class="ld">No hay movimientos registrados</div>';
+}
+
+// Muestra "FAC-001" si es una sola; "FAC-001 +2 más" si el movimiento cubre varias
+function refLabel(ref) {
+  const arr=String(ref).split(',').map(s=>s.trim()).filter(Boolean);
+  return arr.length<=1 ? (arr[0]||'') : `${arr[0]} +${arr.length-1} más`;
 }
 
 function openGastoModal() {
@@ -1602,12 +1646,16 @@ function openBancoModal() {
   setTimeout(()=>$('ban-val').focus(), 300);
 }
 
+// Facturas vinculadas al movimiento en curso (puede ser una consignación que cubre varias)
+let _banFacs = [];
+
 function searchFacs() {
   const q = ($('ban-fac-q').value||'').trim().toLowerCase();
   const drop = $('ban-fac-drop');
   if(!q){ drop.classList.add('h'); return; }
+  const yaSel = new Set(_banFacs.map(f=>f.id));
   const lista = _ventas.filter(v=>
-    v.Estado_Pago !== 'Pagado' &&
+    v.Estado_Pago !== 'Pagado' && v.Estado_Pedido !== 'Cancelado' && !yaSel.has(v.ID_Factura) &&
     ((v.Cliente||'').toLowerCase().includes(q) || (v.ID_Factura||'').toLowerCase().includes(q))
   );
   drop.innerHTML = lista.length
@@ -1629,23 +1677,45 @@ function searchFacs() {
 
 function selectFacEl(el) {
   const id = el.dataset.id;
-  const cli = el.dataset.cli;
-  const tot = parseFloat(el.dataset.tot)||0;
-  $('ban-ref').value = id;
+  if(!_banFacs.find(f=>f.id===id)){
+    _banFacs.push({ id, cli: el.dataset.cli, tot: parseFloat(el.dataset.tot)||0 });
+  }
   $('ban-fac-q').value = '';
   $('ban-fac-drop').classList.add('h');
-  $('ban-fac-sel-txt').textContent = `📎 ${id} — ${cli}  ·  ${fCOP(tot)}`;
-  $('ban-fac-sel').classList.remove('h');
-  // Auto-completar valor si está vacío
-  if(!$('ban-val').value || $('ban-val').value === '0') $('ban-val').value = tot;
+  renderBanFacs();
+}
+
+function removeBanFac(i) { _banFacs.splice(i,1); renderBanFacs(); }
+
+// El usuario editó el valor a mano → dejar de seguir la suma y recalcular la advertencia
+function onBanValInput() { $('ban-val').dataset.auto='0'; if(_banFacs.length) renderBanFacs(); }
+
+function renderBanFacs() {
+  const box = $('ban-fac-sel');
+  if(!_banFacs.length){ box.classList.add('h'); box.innerHTML=''; return; }
+  const total = _banFacs.reduce((s,f)=>s+f.tot,0);
+  // El valor del movimiento sigue a la suma mientras el usuario no lo edite a mano
+  if(!$('ban-val').value || $('ban-val').value==='0' || $('ban-val').dataset.auto==='1'){
+    $('ban-val').value = total; $('ban-val').dataset.auto='1';
+  }
+  const val = parseFloat($('ban-val').value)||0;
+  const dif = val - total;
+  box.classList.remove('h');
+  box.innerHTML =
+    _banFacs.map((f,i)=>`<div class="fac-chip">
+        <span class="fac-chip-txt">📎 ${f.id} — ${f.cli} · ${fCOP(f.tot)}</span>
+        <span class="fac-chip-x" onclick="removeBanFac(${i})">×</span>
+      </div>`).join('') +
+    `<div class="fac-chip-tot"><span>${_banFacs.length} factura${_banFacs.length===1?'':'s'}</span><b>${fCOP(total)}</b></div>` +
+    (Math.abs(dif)>0.5 ? `<div class="fac-chip-warn">⚠ El valor ingresado (${fCOP(val)}) ${dif>0?'supera':'es menor a'} la suma por ${fCOP(Math.abs(dif))}</div>` : '');
 }
 
 function clearFac() {
-  $('ban-ref').value = '';
+  _banFacs = [];
   $('ban-fac-q').value = '';
   $('ban-fac-drop').classList.add('h');
-  $('ban-fac-sel').classList.add('h');
-  $('ban-fac-sel-txt').textContent = '';
+  $('ban-val').removeAttribute('data-auto');
+  renderBanFacs();
 }
 
 async function submitBanco() {
@@ -1657,11 +1727,12 @@ async function submitBanco() {
     tipo:getToggle('tg-ban'),
     valor:val,
     descripcion:$('ban-desc').value.trim(),
-    id_factura_referencia:$('ban-ref').value.trim()
+    ids_factura:_banFacs.map(f=>f.id)
   });
   showLoad(false);
   if(r.success){
-    toast('Movimiento guardado ✓');
+    const n=r.data&&r.data.facturas_vinculadas||0;
+    toast(n>1?`Movimiento guardado · ${n} facturas marcadas pagadas ✓`:'Movimiento guardado ✓');
     closeModal('modal-banco');
     clearFac();
     $('ban-val').value='';
@@ -1691,7 +1762,7 @@ async function loadInv() {
   const rate={};
   const lim=Date.now()-30*86400000;
   _ventas.forEach(v=>{
-    if(v.Estado_Pedido==='Devolucion'||!v.Fecha) return;
+    if(v.Estado_Pedido==='Devolucion'||v.Estado_Pedido==='Cancelado'||!v.Fecha) return;
     if(new Date(v.Fecha+'T12:00:00').getTime()<lim) return;
     (v.productos||[]).forEach(p=>{ if(p.SKU) rate[p.SKU]=(rate[p.SKU]||0)+(parseFloat(p.Cantidad)||0); });
   });
