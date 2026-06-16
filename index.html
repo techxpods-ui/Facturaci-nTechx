@@ -501,14 +501,21 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
             </select>
           </div>
         </div>
-        <select id="v-epedido" class="fi" style="margin-bottom:12px" onchange="loadVentas()">
+        <select id="v-epedido" class="fi" style="margin-bottom:8px" onchange="loadVentas()">
           <option value="">Todos los estados</option>
           <option value="Pendiente">Pendiente</option>
+          <option value="Despachado">Despachado</option>
+          <option value="Recogido">Recogido</option>
           <option value="Entregado">Entregado</option>
           <option value="Garantia">Garantía</option>
           <option value="Devolucion">Devolución</option>
           <option value="Cancelado">Cancelado</option>
         </select>
+        <div class="tg" id="tg-v-ciudad" style="margin-bottom:12px">
+          <button class="to on" data-v="" onclick="togVCiudad(this)">Todos</button>
+          <button class="to" data-v="medellin" onclick="togVCiudad(this)">Medellín</button>
+          <button class="to" data-v="nacional" onclick="togVCiudad(this)">Nacional</button>
+        </div>
         <div id="v-list"><div class="ld"><div class="sp"></div></div></div>
       </div>
 
@@ -1237,12 +1244,22 @@ async function loadVentas() {
   renderVentasList();
 }
 
-// Renderiza la lista aplicando el buscador local (cliente / teléfono / FAC)
+function togVCiudad(btn) {
+  $('tg-v-ciudad').querySelectorAll('.to').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  renderVentasList();
+}
+
+const normCity = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+
+// Renderiza la lista aplicando buscador local + filtro ciudad
 function renderVentasList() {
   const q=($('v-q').value||'').trim().toLowerCase();
-  const list=q
-    ? _ventas.filter(v=>(v.Cliente||'').toLowerCase().includes(q)||String(v.Telefono||'').includes(q)||(v.ID_Factura||'').toLowerCase().includes(q))
-    : _ventas;
+  const ciudad=$('tg-v-ciudad')?.querySelector('.to.on')?.dataset.v||'';
+  let list=_ventas;
+  if(q) list=list.filter(v=>(v.Cliente||'').toLowerCase().includes(q)||String(v.Telefono||'').includes(q)||(v.ID_Factura||'').toLowerCase().includes(q));
+  if(ciudad==='medellin') list=list.filter(v=>normCity(v.Ciudad)==='medellin');
+  if(ciudad==='nacional') list=list.filter(v=>normCity(v.Ciudad)!=='medellin'&&(v.Ciudad||'').trim()!=='');
   if(!list.length){ $('v-list').innerHTML='<div class="ld">No hay ventas para estos filtros</div>'; return; }
   $('v-list').innerHTML = list.map(v=>`
     <div class="vc" onclick="showVD('${v.ID_Factura}')">
