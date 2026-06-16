@@ -726,6 +726,17 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
   </div>
 </div>
 
+<!-- Confirmación genérica -->
+<div class="ov h" id="modal-confirm">
+  <div class="modal">
+    <div class="mh"></div>
+    <div class="mt" id="confirm-title">¿Confirmar acción?</div>
+    <div id="confirm-msg" style="font-size:13px;color:var(--gm);margin-bottom:20px;line-height:1.5"></div>
+    <button class="btn btn-p" id="confirm-ok">Confirmar</button>
+    <button class="btn btn-g" onclick="closeModal('modal-confirm')">Cancelar</button>
+  </div>
+</div>
+
 <!-- Domicilio edit -->
 <div class="ov h" id="modal-dom-edit">
   <div class="modal">
@@ -1342,10 +1353,29 @@ function showVD(id) {
   openModal('modal-vd');
 }
 
+function customConfirm(title, msg) {
+  return new Promise(resolve => {
+    $('confirm-title').textContent = title;
+    $('confirm-msg').textContent = msg;
+    const btn = $('confirm-ok');
+    const handler = () => { btn.removeEventListener('click', handler); closeModal('modal-confirm'); resolve(true); };
+    btn.addEventListener('click', handler);
+    // Si cierra con Cancelar, resolver false
+    const ov = $('modal-confirm');
+    const cancel = () => { ov.removeEventListener('click', cancel); btn.removeEventListener('click', handler); resolve(false); };
+    ov.addEventListener('click', e => { if(e.target===ov) cancel(); });
+    openModal('modal-confirm');
+  });
+}
+
 async function anularVenta(id) {
   const v=_ventas.find(x=>x.ID_Factura===id);
   const quien=v&&v.Cliente?` de ${v.Cliente}`:'';
-  if(!confirm(`¿Anular el pedido ${id}${quien}?\n\nSe marca como Cancelado: el producto vuelve a bodega y sale de ventas y deudores. Podrás reactivarlo después si fue un error.`)) return;
+  const ok = await customConfirm(
+    `Anular pedido ${id}`,
+    `Se marca como Cancelado: el producto vuelve a bodega y sale de ventas y deudores. Podrás reactivarlo después si fue un error.`
+  );
+  if(!ok) return;
   showLoad(true);
   const r=await api('updateVenta',{id_factura:id,updates:{Estado_Pedido:'Cancelado'}});
   showLoad(false);
