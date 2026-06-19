@@ -1398,9 +1398,11 @@ function showVD(id) {
         <select id="vd-new-ep" class="fi">${estados.map(e=>`<option value="${e}">${e}</option>`).join('')}</select>
         <button class="btn btn-g" style="margin-top:8px" onclick="updateEP('${v.ID_Factura}')">Actualizar estado</button>
       </div>
-      ${v.Estado_Pago!=='Pagado'?`<button class="btn btn-p" onclick="marcarPagado('${v.ID_Factura}')">✓ Marcar como pagado</button>`:''}
+      ${v.Estado_Pago!=='Pagado'
+        ?`<button class="btn btn-p" onclick="marcarPagado('${v.ID_Factura}')">✓ Marcar como pagado</button>`
+        :`<button class="btn btn-g" style="color:#D4A017;border-color:#2a2010" onclick="deshacerPagoStep1('${v.ID_Factura}',this)">↩ Deshacer pago</button>`}
       <button class="btn btn-g" onclick="printFromDetail('${v.ID_Factura}')">🖨 Imprimir rótulo</button>
-      <button class="btn btn-g" style="color:#E87070;border-color:#3a1c1c" onclick="anularVenta('${v.ID_Factura}')">✕ Anular pedido (no se vendió)</button>`;
+      <button class="btn btn-g" style="color:#E87070;border-color:#3a1c1c" onclick="anularStep1('${v.ID_Factura}',this)">✕ Anular pedido (no se vendió)</button>`;
   }
 
   openModal('modal-vd');
@@ -1421,19 +1423,50 @@ function customConfirm(title, msg) {
   });
 }
 
-async function anularVenta(id) {
-  const v=_ventas.find(x=>x.ID_Factura===id);
-  const quien=v&&v.Cliente?` de ${v.Cliente}`:'';
-  const ok = await customConfirm(
-    `Anular pedido ${id}`,
-    `Se marca como Cancelado: el producto vuelve a bodega y sale de ventas y deudores. Podrás reactivarlo después si fue un error.`
-  );
-  if(!ok) return;
+let _anularTimer=null;
+function anularStep1(id,btn){
+  if(_anularTimer){ clearTimeout(_anularTimer); _anularTimer=null; }
+  btn.textContent='¿Seguro? Toca de nuevo para confirmar';
+  btn.style.cssText='background:#E87070;color:#fff;border-color:#E87070;width:100%;padding:13px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px';
+  btn.onclick=()=>anularStep2(id,btn);
+  _anularTimer=setTimeout(()=>{
+    btn.textContent='✕ Anular pedido (no se vendió)';
+    btn.style.cssText='color:#E87070;border-color:#3a1c1c;width:100%;padding:13px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;background:transparent';
+    btn.onclick=()=>anularStep1(id,btn);
+    _anularTimer=null;
+  },3000);
+}
+
+async function anularStep2(id,btn){
+  if(_anularTimer){ clearTimeout(_anularTimer); _anularTimer=null; }
   showLoad(true);
   const r=await api('updateVenta',{id_factura:id,updates:{Estado_Pedido:'Cancelado'}});
   showLoad(false);
   if(r.success){ toast('Pedido anulado ✓'); closeModal('modal-vd'); loadVentas(); }
   else toast(r.error||'Error al anular',true);
+}
+
+let _deshacerTimer=null;
+function deshacerPagoStep1(id,btn){
+  if(_deshacerTimer){ clearTimeout(_deshacerTimer); _deshacerTimer=null; }
+  btn.textContent='¿Seguro? Toca de nuevo para confirmar';
+  btn.style.cssText='background:#D4A017;color:#fff;border-color:#D4A017;width:100%;padding:13px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px';
+  btn.onclick=()=>deshacerPagoStep2(id,btn);
+  _deshacerTimer=setTimeout(()=>{
+    btn.textContent='↩ Deshacer pago';
+    btn.style.cssText='color:#D4A017;border-color:#2a2010;width:100%;padding:13px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;background:transparent';
+    btn.onclick=()=>deshacerPagoStep1(id,btn);
+    _deshacerTimer=null;
+  },3000);
+}
+
+async function deshacerPagoStep2(id,btn){
+  if(_deshacerTimer){ clearTimeout(_deshacerTimer); _deshacerTimer=null; }
+  showLoad(true);
+  const r=await api('updateVenta',{id_factura:id,updates:{Estado_Pago:'Contraentrega',ID_Banco_Referencia:''}});
+  showLoad(false);
+  if(r.success){ toast('Pago revertido ✓'); closeModal('modal-vd'); loadVentas(); }
+  else toast(r.error||'Error',true);
 }
 
 async function reactivarVenta(id) {
