@@ -1371,21 +1371,20 @@ function downloadCuadre(){
   const mensajero=sel[0].Mensajero||'Mensajero';
   const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
   const heads=['Factura','Fecha','Cliente','Ciudad','Estado Pago','Quien Paga Dom','Dom ($)','Total Factura','Cobrado por mensajero'];
-  let totalCobrado=0, totalDom=0;
+  let totalCobrado=0, totalFlete=0;
   const rows=sel.map(v=>{
     const dom=parseFloat(v.Costo_Domicilio)||0;
     const total=parseFloat(v.Total_Factura)||0;
-    const quienPaga=(v.Quien_Paga_Domicilio||'').trim();
     const esContraentrega=v.Estado_Pago!=='Pagado'&&v.Estado_Pago!=='Pendiente';
     const cobrado=esContraentrega?total:0;
     totalCobrado+=cobrado;
-    if(quienPaga==='TechX') totalDom+=dom;
-    return [v.ID_Factura,v.Fecha,v.Cliente,v.Ciudad,v.Estado_Pago,quienPaga||'—',dom,total,cobrado].map(esc).join(',');
+    totalFlete+=dom;
+    return [v.ID_Factura,v.Fecha,v.Cliente,v.Ciudad,v.Estado_Pago,(v.Quien_Paga_Domicilio||'—'),dom,total,cobrado].map(esc).join(',');
   });
-  const neto=totalCobrado-totalDom;
+  const neto=totalCobrado-totalFlete;
   rows.push('');
   rows.push([esc(''),esc(''),esc(''),esc(''),esc(''),esc(''),esc('TOTAL COBRADO POR MENSAJERO'),esc(''),esc(totalCobrado)].join(','));
-  rows.push([esc(''),esc(''),esc(''),esc(''),esc(''),esc(''),esc('FLETE A PAGAR (TechX asume)'),esc(totalDom),esc('')].join(','));
+  rows.push([esc(''),esc(''),esc(''),esc(''),esc(''),esc(''),esc('FLETE A PAGAR AL MENSAJERO'),esc(totalFlete),esc('')].join(','));
   rows.push([esc(''),esc(''),esc(''),esc(''),esc(''),esc(''),esc(neto>=0?'NETO A ENTREGAR A TECHX':'TECHX DEBE AL MENSAJERO'),esc(''),esc(Math.abs(neto))].join(','));
   const csv='﻿'+heads.map(esc).join(',')+'\n'+rows.join('\n');
   const a=document.createElement('a');
