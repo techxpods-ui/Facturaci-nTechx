@@ -1506,9 +1506,9 @@ function showVD(id) {
       </div>
       ${v.Estado_Pago!=='Pagado'
         ?`<button class="btn btn-p" onclick="marcarPagado('${v.ID_Factura}')">✓ Marcar como pagado</button>`
-        :`<button class="btn btn-g" style="color:#D4A017;border-color:#2a2010" onclick="handleDeshacerPago('${v.ID_Factura}',this)">↩ Deshacer pago</button>`}
+        :`<button class="btn btn-g" style="color:#D4A017;border-color:#2a2010" onclick="doDeshacerPago('${v.ID_Factura}')">↩ Deshacer pago</button>`}
       <button class="btn btn-g" onclick="printFromDetail('${v.ID_Factura}')">🖨 Imprimir rótulo</button>
-      <button class="btn btn-g" style="color:#E87070;border-color:#3a1c1c" onclick="handleAnular('${v.ID_Factura}',this)">✕ Anular pedido (no se vendió)</button>`;
+      <button class="btn btn-g" style="color:#E87070;border-color:#3a1c1c" onclick="doAnular('${v.ID_Factura}')">✕ Anular pedido (no se vendió)</button>`;
   }
 
   openModal('modal-vd');
