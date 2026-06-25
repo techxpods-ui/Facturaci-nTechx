@@ -1529,52 +1529,48 @@ function customConfirm(title, msg) {
   });
 }
 
-let _anularConfirm=null;
 function handleAnular(id,btn){
-  if(_anularConfirm===id){
-    _anularConfirm=null;
-    if(btn._anularReset){ clearTimeout(btn._anularReset); btn._anularReset=null; }
-    showLoad(true);
-    api('updateVenta',{id_factura:id,updates:{Estado_Pedido:'Cancelado'}}).then(r=>{
-      showLoad(false);
-      if(r.success){ toast('Pedido anulado ✓'); closeModal('modal-vd'); loadVentas(); }
-      else toast(r.error||'Error al anular',true);
-    });
-    return;
+  if(btn.nextElementSibling&&btn.nextElementSibling.classList.contains('confirm-box')){
+    btn.nextElementSibling.remove(); return;
   }
-  _anularConfirm=id;
-  btn.textContent='¿Seguro? Toca de nuevo para confirmar';
-  btn.style.cssText='background:#E87070;color:#fff;border-color:#E87070;width:100%;padding:13px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px';
-  btn._anularReset=setTimeout(()=>{
-    _anularConfirm=null;
-    btn.textContent='✕ Anular pedido (no se vendió)';
-    btn.style.cssText='color:#E87070;border-color:#3a1c1c;width:100%;padding:13px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;background:transparent';
-    btn._anularReset=null;
-  },4000);
+  document.querySelectorAll('.confirm-box').forEach(el=>el.remove());
+  const box=document.createElement('div');
+  box.className='confirm-box';
+  box.style.cssText='margin-top:8px;display:flex;gap:8px';
+  box.innerHTML=`<button onclick="doAnular('${id}')" style="flex:1;padding:13px;border-radius:12px;background:#E87070;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">Sí, anular</button><button onclick="this.parentElement.remove()" style="flex:1;padding:13px;border-radius:12px;background:transparent;color:var(--gm);border:1px solid var(--bd);font-size:14px;font-weight:600;cursor:pointer">No</button>`;
+  btn.after(box);
+  setTimeout(()=>{ if(box.parentElement) box.remove(); },8000);
 }
 
-let _deshacerConfirm=null;
+async function doAnular(id){
+  document.querySelectorAll('.confirm-box').forEach(el=>el.remove());
+  showLoad(true);
+  const r=await api('updateVenta',{id_factura:id,updates:{Estado_Pedido:'Cancelado'}});
+  showLoad(false);
+  if(r.success){ toast('Pedido anulado ✓'); closeModal('modal-vd'); loadVentas(); }
+  else toast(r.error||'Error al anular',true);
+}
+
 function handleDeshacerPago(id,btn){
-  if(_deshacerConfirm===id){
-    _deshacerConfirm=null;
-    if(btn._deshacerReset){ clearTimeout(btn._deshacerReset); btn._deshacerReset=null; }
-    showLoad(true);
-    api('updateVenta',{id_factura:id,updates:{Estado_Pago:'Contraentrega',ID_Banco_Referencia:''}}).then(r=>{
-      showLoad(false);
-      if(r.success){ toast('Pago revertido ✓'); closeModal('modal-vd'); loadVentas(); }
-      else toast(r.error||'Error',true);
-    });
-    return;
+  if(btn.nextElementSibling&&btn.nextElementSibling.classList.contains('confirm-box')){
+    btn.nextElementSibling.remove(); return;
   }
-  _deshacerConfirm=id;
-  btn.textContent='¿Seguro? Toca de nuevo para confirmar';
-  btn.style.cssText='background:#D4A017;color:#fff;border-color:#D4A017;width:100%;padding:13px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px';
-  btn._deshacerReset=setTimeout(()=>{
-    _deshacerConfirm=null;
-    btn.textContent='↩ Deshacer pago';
-    btn.style.cssText='color:#D4A017;border-color:#2a2010;width:100%;padding:13px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;background:transparent';
-    btn._deshacerReset=null;
-  },4000);
+  document.querySelectorAll('.confirm-box').forEach(el=>el.remove());
+  const box=document.createElement('div');
+  box.className='confirm-box';
+  box.style.cssText='margin-top:8px;display:flex;gap:8px';
+  box.innerHTML=`<button onclick="doDeshacerPago('${id}')" style="flex:1;padding:13px;border-radius:12px;background:#D4A017;color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer">Sí, deshacer</button><button onclick="this.parentElement.remove()" style="flex:1;padding:13px;border-radius:12px;background:transparent;color:var(--gm);border:1px solid var(--bd);font-size:14px;font-weight:600;cursor:pointer">No</button>`;
+  btn.after(box);
+  setTimeout(()=>{ if(box.parentElement) box.remove(); },8000);
+}
+
+async function doDeshacerPago(id){
+  document.querySelectorAll('.confirm-box').forEach(el=>el.remove());
+  showLoad(true);
+  const r=await api('updateVenta',{id_factura:id,updates:{Estado_Pago:'Contraentrega',ID_Banco_Referencia:''}});
+  showLoad(false);
+  if(r.success){ toast('Pago revertido ✓'); closeModal('modal-vd'); loadVentas(); }
+  else toast(r.error||'Error',true);
 }
 
 async function reactivarVenta(id) {
