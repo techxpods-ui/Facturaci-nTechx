@@ -46,7 +46,7 @@ input,select,textarea,button{font-family:var(--fb)}
 .tb-back{background:none;border:none;color:var(--gm);font-size:24px;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0}
 .tb-title{font-family:var(--ft);font-weight:900;font-size:15px;letter-spacing:2px;flex:1}
 .tb-action{background:none;border:none;color:var(--gm);font-size:22px;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px}
-main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:80px}
 #bottom-nav{height:var(--nav);background:var(--card);border-top:1px solid var(--bd);display:flex;align-items:stretch;flex-shrink:0}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:none;border:none;color:var(--gm);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;cursor:pointer;transition:.15s;padding:6px 0}
 .nb.on{color:var(--ws)}
@@ -164,7 +164,8 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
 .fc.on{background:var(--gd);border-color:var(--gd);color:var(--ws)}
 /* Estado pills multi-select */
 .vp{flex-shrink:0;padding:5px 12px;border-radius:20px;border:1px solid var(--bd);background:transparent;color:var(--gm);font-size:11px;font-weight:600;cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent}
-.vp.on.vp-pend{background:#1E1E24;border-color:#808090;color:#b0b0c0}
+.vp.on.vp-pend-e{background:#1E1E24;border-color:#808090;color:#b0b0c0}
+.vp.on.vp-pend-p{background:#1E1A0C;border-color:#D4A017;color:#D4A017}
 .vp.on.vp-entr{background:#0C1E18;border-color:#4CAF7A;color:#4CAF7A}
 .vp.on.vp-dev{background:#1E0C0C;border-color:#E87070;color:#E87070}
 .vp.on.vp-canc{background:#161616;border-color:#606060;color:#909090}
@@ -360,7 +361,7 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
         <div class="stat-v big" id="h-un" style="margin-top:4px">—</div>
       </div>
       <div class="cg">
-        <div class="card" style="cursor:pointer" onclick="applyFilter('ventas','ep','Pendiente')">
+        <div class="card" style="cursor:pointer" onclick="applyFilter('ventas','ep','pend-entrega')">
           <div class="stat-l">⏳ Pedidos pendientes</div>
           <div class="stat-v" id="h-pend" style="font-size:28px">—</div>
         </div>
@@ -519,7 +520,8 @@ select.fi{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.o
           </div>
         </div>
         <div id="v-estados" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-          <button class="vp vp-pend" data-v="Pendiente" onclick="togEstadoPill(this)">Pendiente</button>
+          <button class="vp vp-pend-e" data-v="pend-entrega" onclick="togEstadoPill(this)">Pend. entrega</button>
+          <button class="vp vp-pend-p" data-v="pend-pago" onclick="togEstadoPill(this)">Pend. pago</button>
           <button class="vp vp-entr" data-v="Entregado" onclick="togEstadoPill(this)">Entregado</button>
           <button class="vp vp-dev" data-v="Devolucion" onclick="togEstadoPill(this)">Devolución</button>
           <button class="vp vp-canc" data-v="Cancelado" onclick="togEstadoPill(this)">Cancelado</button>
@@ -1291,7 +1293,13 @@ function getVentasFiltradas() {
   const activos=[...(document.querySelectorAll('#v-estados .vp.on')||[])].map(b=>b.dataset.v);
   let list=_ventas;
   if(q) list=list.filter(v=>(v.Cliente||'').toLowerCase().includes(q)||String(v.Telefono||'').includes(q)||(v.ID_Factura||'').toLowerCase().includes(q));
-  if(activos.length) list=list.filter(v=>activos.includes(v.Estado_Pedido));
+  if(activos.length) list=list.filter(v=>{
+    return activos.some(f=>{
+      if(f==='pend-entrega') return v.Estado_Pedido==='Pendiente';
+      if(f==='pend-pago') return v.Estado_Pago!=='Pagado';
+      return v.Estado_Pedido===f;
+    });
+  });
   if(ciudad==='medellin') list=list.filter(v=>normCity(v.Ciudad)==='medellin');
   if(ciudad==='nacional') list=list.filter(v=>normCity(v.Ciudad)!=='medellin'&&(v.Ciudad||'').trim()!=='');
   return list;
