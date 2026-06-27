@@ -1312,6 +1312,7 @@ function renderVentasList() {
         <span class="bdg ${badgePago(v.Estado_Pago)}">${v.Estado_Pago}</span>
       </div>
       <div class="vc-cl" onclick="showVD('${v.ID_Factura}')">${v.Cliente||'—'}</div>
+      <div onclick="showVD('${v.ID_Factura}')" style="font-size:11px;color:var(--gm);margin:2px 0">${(v.productos||[]).map(p=>(p.Nombre_Producto||p.SKU)+(p.Cantidad>1?' ×'+p.Cantidad:'')).join(', ')||'—'}</div>
       <div class="vc-mt" onclick="showVD('${v.ID_Factura}')">${v.Ciudad||''} ${v.Mensajero?'· '+v.Mensajero:''}</div>
       <div class="vc-ft" onclick="showVD('${v.ID_Factura}')"><span class="bdg ${badgePedido(v.Estado_Pedido)}">${v.Estado_Pedido}</span><span class="vc-tot">${fCOP(v.Total_Factura)}</span></div>
     </div>`;
